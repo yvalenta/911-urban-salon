@@ -231,7 +231,6 @@ img{max-width:100%;display:block}
 html{scroll-behavior:smooth}
 [data-aos]{pointer-events:auto}
 
-
 /* ══ Adaptación móvil ══
    Los layouts del bundle usan estilos inline; estas reglas los colapsan
    por selector de atributo en pantallas angostas. */
@@ -249,6 +248,7 @@ html{scroll-behavior:smooth}
   div[style*="repeat(4"]{ grid-template-columns: 1fr !important; }
   div[style*="grid-template-columns: 1fr 1fr"]{ grid-template-columns: 1fr !important; }
 }
+
 </style>
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
@@ -3646,6 +3646,14 @@ window.DATA_911 = {
     { icon: "smile", nombre: "Masaje facial", desc: "Limpieza e hidratación.", precio: "$150.000", dur: "40 min" },
     { icon: "waves", nombre: "Masoterapia", desc: "Técnicas terapéuticas para alivio de dolores, estrés y bienestar general.", precio: "$150.000", dur: "75 min" }
   ],
+  horario: {
+    dias: "De miércoles a lunes",
+    etiqueta: "12:00 p.m — 9:00 p.m",
+    apertura: 12,
+    fin: 21,
+    cierre: "Martes cerrado",
+    nota: "Barberos y masajistas en jornada continua."
+  },
   barberia: [
     { nombre: "Trenzas", dur: "90 min", precio: "$100.000" },
     { nombre: "Tintura", dur: "90 min", precio: "$150.000" },
@@ -3674,13 +3682,13 @@ window.DATA_911 = {
   ],
   faq: [
     { q: "¿Necesito cita?", a: "No es obligatoria, pero con turno asignado entras sin esperar. El sistema te da el próximo hueco libre del barbero que elijas." },
-    { q: "¿Qué días atienden?", a: "De miércoles a lunes. Los barberos trabajan en dos jornadas: 9:00 a.m — 3:00 p.m y 3:00 p.m — 9:00 p.m. Las masajistas atienden de 10:00 a.m a 5:00 p.m." },
+    { q: "¿Qué días atienden?", a: "De miércoles a lunes, de 12:00 p.m a 9:00 p.m en jornada continua. Martes cerrado." },
     { q: "¿Puedo cancelar o mover mi turno?", a: "Sí. Con el código de tu turno escríbenos por WhatsApp y lo movemos al siguiente hueco disponible del mismo barbero." },
     { q: "¿Atienden mujeres y niños?", a: "Sí. La carta de cortes, faciales y masajes está abierta a todo público." }
   ]
 };
 </script>
-<!-- ══ Panel administrativo: login + sala + cola + carta editable ══ -->
+<!-- ══ Panel administrativo: login + sala + cola + carta y horarios editables ══ -->
 <script type="text/babel" data-presets="react">
 const { Card, Badge, Button, Icon, Input, StepIndicator, BarberCard, QueueStatus, TurnoTicket } = window.Ds911UrbanSalNDesignSystem_1e06a9;
 
@@ -3840,6 +3848,48 @@ function FormServicio({ inicial, rotulo, onGuardar, onCancelar }) {
   );
 }
 
+/* Horario de atención editable (se guarda en este navegador). */
+const CLAVE_HORARIO = "turnos911_horario";
+
+function HorariosAdmin({ horario, guardar }) {
+  const [editando, setEditando] = React.useState(false);
+  const [form, setForm] = React.useState(horario);
+  const campo = k => e => setForm({ ...form, [k]: e.target.value });
+  function enviar(e) {
+    e.preventDefault();
+    const ap = parseInt(form.apertura, 10), fi = parseInt(form.fin, 10);
+    guardar({ ...form, apertura: isNaN(ap) ? 12 : ap, fin: isNaN(fi) ? 21 : fi });
+    setEditando(false);
+  }
+  return (
+    <Card padding="var(--card-pad)" accent="azul" style={{ display: "grid", gap: "var(--sp-3)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)", flexWrap: "wrap" }}>
+        <Icon name="clock" size={18} color="var(--azul-neon)" />
+        <span style={{ font: "700 var(--fs-lg)/1 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wide)", color: "var(--text-strong)", flex: 1 }}>Horario de atención</span>
+        {!editando && <Button size="sm" variant="outline" onClick={() => { setForm(horario); setEditando(true); }} iconLeft={<Icon name="pencil" size={14} />}>Editar</Button>}
+      </div>
+      {!editando ? (
+        <div style={{ display: "flex", gap: "var(--sp-6)", flexWrap: "wrap", alignItems: "baseline" }}>
+          <span style={{ font: "400 var(--fs-2xl)/1 var(--font-display)", color: "var(--text-strong)" }}>{horario.etiqueta}</span>
+          <span style={{ font: "var(--type-small)", color: "var(--text-muted)" }}>{horario.dias} · <span style={{ color: "var(--rojo-500)" }}>{horario.cierre}</span></span>
+        </div>
+      ) : (
+        <form onSubmit={enviar} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--sp-3)" }}>
+          <Input label="Días de atención" value={form.dias} onChange={campo("dias")} placeholder="De miércoles a lunes" />
+          <Input label="Horario (como se muestra)" value={form.etiqueta} onChange={campo("etiqueta")} placeholder="12:00 p.m — 9:00 p.m" />
+          <Input label="Hora de apertura (0-23, para las franjas)" value={String(form.apertura)} onChange={campo("apertura")} placeholder="12" />
+          <Input label="Hora de cierre (0-23, para las franjas)" value={String(form.fin)} onChange={campo("fin")} placeholder="21" />
+          <Input label="Día cerrado" value={form.cierre} onChange={campo("cierre")} placeholder="Martes cerrado" />
+          <div style={{ display: "flex", gap: "var(--sp-2)", alignItems: "flex-end", justifyContent: "flex-end" }}>
+            <Button size="sm" type="submit" iconLeft={<Icon name="check" size={14} />}>Guardar</Button>
+            <Button size="sm" variant="ghost" type="button" onClick={() => setEditando(false)}>Cancelar</Button>
+          </div>
+        </form>
+      )}
+    </Card>
+  );
+}
+
 function ServiciosAdmin({ servicios, actualizar, agregar, eliminar }) {
   const [editando, setEditando] = React.useState(null);   // "cat:idx"
   const [agregando, setAgregando] = React.useState(null); // "cat"
@@ -3966,6 +4016,13 @@ function AdminTurnos() {
     };
   });
   const guardarServicios = sv => { setServicios(sv); try { localStorage.setItem(CLAVE_SERVICIOS, JSON.stringify(sv)); } catch (e) {} };
+  /* Horario de atención: lo guardado en este navegador pisa lo del sitio. */
+  const [horario, setHorario] = React.useState(() => {
+    let g = null;
+    try { g = JSON.parse(localStorage.getItem(CLAVE_HORARIO) || "null"); } catch (e) {}
+    return g || D.horario || { dias: "De miércoles a lunes", etiqueta: "12:00 p.m — 9:00 p.m", apertura: 12, fin: 21, cierre: "Martes cerrado" };
+  });
+  const guardarHorario = h => { setHorario(h); try { localStorage.setItem(CLAVE_HORARIO, JSON.stringify(h)); } catch (e) {} };
   const actualizarServicio = (cat, i, campos) => guardarServicios({ ...servicios, [cat]: servicios[cat].map((s, j) => j === i ? { ...s, ...campos } : s) });
   const agregarServicio = (cat, item) => guardarServicios({ ...servicios, [cat]: [...servicios[cat], item] });
   const eliminarServicio = (cat, i) => guardarServicios({ ...servicios, [cat]: servicios[cat].filter((s, j) => j !== i) });
@@ -4006,7 +4063,12 @@ function AdminTurnos() {
       <main className="u-container" style={{ paddingBlock: "var(--sp-8)" }}>
         {vista === "sala" && <Sala enSilla={enSilla} cola={cola} retraso={retraso} />}
         {vista === "panel" && <PanelBarbero cola={cola} enSilla={enSilla} retraso={retraso} equipo={equipo} llamar={llamar} terminar={terminar} siguiente={siguiente} correr={correr} renombrar={renombrar} />}
-        {vista === "servicios" && <ServiciosAdmin servicios={servicios} actualizar={actualizarServicio} agregar={agregarServicio} eliminar={eliminarServicio} />}
+        {vista === "servicios" && (
+          <div style={{ display: "grid", gap: "var(--sp-5)" }}>
+            <HorariosAdmin horario={horario} guardar={guardarHorario} />
+            <ServiciosAdmin servicios={servicios} actualizar={actualizarServicio} agregar={agregarServicio} eliminar={eliminarServicio} />
+          </div>
+        )}
       </main>
     </div>
   );

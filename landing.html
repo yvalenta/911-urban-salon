@@ -1866,7 +1866,7 @@ function Hero({
       gap: "var(--sp-8)",
       marginTop: "var(--sp-4)"
     }
-  }, [["3", "Barberos en silla"], ["2", "Jornadas al día"], ["6", "Días a la semana"]].map(([v, l]) => /*#__PURE__*/React.createElement("div", {
+  }, [["3", "Barberos en silla"], ["9", "Horas al día"], ["6", "Días a la semana"]].map(([v, l]) => /*#__PURE__*/React.createElement("div", {
     key: l,
     style: {
       display: "grid",
@@ -3247,7 +3247,7 @@ window.DATA_911 = {
     a: "No es obligatoria, pero con turno asignado entras sin esperar. El sistema te da el próximo hueco libre del barbero que elijas."
   }, {
     q: "¿Qué días atienden?",
-    a: "De miércoles a lunes. Los barberos trabajan en dos jornadas: 9:00 a.m — 3:00 p.m y 3:00 p.m — 9:00 p.m. Las masajistas atienden de 10:00 a.m a 5:00 p.m."
+    a: "De miércoles a lunes, de 12:00 p.m a 9:00 p.m en jornada continua. Martes cerrado."
   }, {
     q: "¿Puedo cancelar o mover mi turno?",
     a: "Sí. Con el código de tu turno escríbenos por WhatsApp y lo movemos al siguiente hueco disponible del mismo barbero."
@@ -3654,6 +3654,14 @@ window.DATA_911 = {
     { icon: "smile", nombre: "Masaje facial", desc: "Limpieza e hidratación.", precio: "$150.000", dur: "40 min" },
     { icon: "waves", nombre: "Masoterapia", desc: "Técnicas terapéuticas para alivio de dolores, estrés y bienestar general.", precio: "$150.000", dur: "75 min" }
   ],
+  horario: {
+    dias: "De miércoles a lunes",
+    etiqueta: "12:00 p.m — 9:00 p.m",
+    apertura: 12,
+    fin: 21,
+    cierre: "Martes cerrado",
+    nota: "Barberos y masajistas en jornada continua."
+  },
   barberia: [
     { nombre: "Trenzas", dur: "90 min", precio: "$100.000" },
     { nombre: "Tintura", dur: "90 min", precio: "$150.000" },
@@ -3682,14 +3690,14 @@ window.DATA_911 = {
   ],
   faq: [
     { q: "¿Necesito cita?", a: "No es obligatoria, pero con turno asignado entras sin esperar. El sistema te da el próximo hueco libre del barbero que elijas." },
-    { q: "¿Qué días atienden?", a: "De miércoles a lunes. Los barberos trabajan en dos jornadas: 9:00 a.m — 3:00 p.m y 3:00 p.m — 9:00 p.m. Las masajistas atienden de 10:00 a.m a 5:00 p.m." },
+    { q: "¿Qué días atienden?", a: "De miércoles a lunes, de 12:00 p.m a 9:00 p.m en jornada continua. Martes cerrado." },
     { q: "¿Puedo cancelar o mover mi turno?", a: "Sí. Con el código de tu turno escríbenos por WhatsApp y lo movemos al siguiente hueco disponible del mismo barbero." },
     { q: "¿Atienden mujeres y niños?", a: "Sí. La carta de cortes, faciales y masajes está abierta a todo público." }
   ]
 };
 
 </script>
-<!-- ══ Selector de servicio categorizado (reemplaza al del bundle) ══ -->
+<!-- ══ Overrides del bundle: selector categorizado + horarios data-driven ══ -->
 <script type="text/babel" data-presets="react">
 /* Reemplaza el TurnosAsistente del bundle: selector de servicio categorizado
    (cortes / spa / barbería) con chips más legibles: nombre grande, duración y precio. */
@@ -3710,6 +3718,7 @@ function proximosDias(n = 5) {
 
 function hash(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
 function construirJornadas(fechaKey, barbero, esSpa) {
+  const H = window.DATA_911.horario || { apertura: 12, fin: 21, etiqueta: "12:00 p.m — 9:00 p.m" };
   const gen = (desde, hasta, nombre, rango) => {
     const slots = [];
     for (let m = desde * 60; m < hasta * 60; m += 45) {
@@ -3718,9 +3727,7 @@ function construirJornadas(fechaKey, barbero, esSpa) {
     }
     return { nombre, rango, slots };
   };
-  return esSpa
-    ? [gen(10, 17, "Jornada única", "10:00 a.m — 5:00 p.m")]
-    : [gen(9, 15, "1ra jornada", "9:00 a.m — 3:00 p.m"), gen(15, 21, "2da jornada", "3:00 p.m — 9:00 p.m")];
+  return [gen(H.apertura, H.fin, "Jornada única", H.etiqueta)];
 }
 
 function ChipServicio({ s, selected, onClick }) {
@@ -3897,7 +3904,65 @@ function TurnosAsistente({ servicioInicial }) {
   );
 }
 
-Object.assign(window, { TurnosAsistente });
+
+function Horarios() {
+  const H = window.DATA_911.horario || {};
+  const { SectionHeading, Card, Badge, Icon } = window.Ds911UrbanSalNDesignSystem_1e06a9;
+  return (
+    <section id="horarios" style={{ paddingBlock: "var(--section-y)", background: "var(--negro-950)", borderBlock: "1px solid var(--border-hair)" }}>
+      <div className="u-container" style={{ display: "grid", gridTemplateColumns: ".9fr 1.1fr", gap: "var(--sp-12)", alignItems: "center" }}>
+        <div style={{ position: "relative", display: "grid", placeItems: "center", minHeight: 300 }} data-aos="fade-right">
+          <img src="assets/icon-barber-pole.png" alt="" style={{ height: 300, filter: "drop-shadow(0 0 40px rgba(46,155,240,.35))" }} />
+        </div>
+        <div style={{ display: "grid", gap: "var(--sp-6)" }} data-aos="fade-left">
+          <SectionHeading kicker="Horarios" title={H.dias || "De miércoles a lunes"} />
+          <div style={{ display: "grid", gap: "var(--sp-4)", justifyItems: "start" }}>
+            <Card padding="var(--card-pad)" style={{ display: "grid", gap: "var(--sp-3)", width: "100%" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <Icon name="clock" size={18} color="var(--naranja-500)" />
+                <span style={{ font: "700 var(--fs-lg)/1 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wider)", color: "var(--text-strong)" }}>Horario de atención</span>
+              </div>
+              <div style={{ font: "400 var(--fs-3xl)/1 var(--font-display)", color: "var(--text-strong)" }}>{H.etiqueta || "12:00 p.m — 9:00 p.m"}</div>
+              <span style={{ font: "var(--type-small)", color: "var(--text-muted)" }}>{H.nota || "Barberos y masajistas en jornada continua."}</span>
+            </Card>
+            <Badge tone="ocupado">{H.cierre || "Martes cerrado"}</Badge>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Footer() {
+  const D = window.DATA_911;
+  const H = D.horario || {};
+  const { Icon } = window.Ds911UrbanSalNDesignSystem_1e06a9;
+  return (
+    <footer style={{ borderTop: "1px solid var(--border-hair)", background: "var(--negro-950)", paddingBlock: "var(--sp-12)" }}>
+      <div className="u-container" style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr", gap: "var(--sp-10)" }}>
+        <div style={{ display: "grid", gap: "var(--sp-4)", justifyItems: "start" }}>
+          <img src="assets/logo-911-urban-salon-dark.png" alt="911 Urban Salón" style={{ height: 110 }} />
+          <span style={{ fontFamily: "var(--font-tag)", color: "var(--naranja-500)", transform: "rotate(-2deg)", display: "inline-block" }}>Tu belleza, nuestra emergencia</span>
+        </div>
+        <div style={{ display: "grid", gap: "var(--sp-3)", alignContent: "start" }}>
+          <h4 style={{ font: "700 var(--fs-sm)/1 var(--font-condensed)", letterSpacing: "var(--ls-wider)", color: "var(--text-strong)", margin: 0 }}>Horarios</h4>
+          <span style={{ font: "var(--type-small)", color: "var(--text-muted)" }}>{H.dias || "De miércoles a lunes"}<br />{H.etiqueta || "12:00 p.m — 9:00 p.m"}<br />{H.cierre || "Martes cerrado"}</span>
+        </div>
+        <div style={{ display: "grid", gap: "var(--sp-3)", alignContent: "start" }}>
+          <h4 style={{ font: "700 var(--fs-sm)/1 var(--font-condensed)", letterSpacing: "var(--ls-wider)", color: "var(--text-strong)", margin: 0 }}>Contacto</h4>
+          <a href={"https://wa.me/" + D.telefono} style={{ display: "flex", gap: 8, alignItems: "center", font: "var(--type-small)" }}><Icon name="message-circle" size={16} />WhatsApp</a>
+          <a href="#" style={{ display: "flex", gap: 8, alignItems: "center", font: "var(--type-small)" }}><Icon name="instagram" size={16} />@911urbansalon</a>
+          <span style={{ display: "flex", gap: 8, alignItems: "flex-start", font: "var(--type-small)", color: "var(--text-faint)" }}><Icon name="map-pin" size={16} />{D.direccion}</span>
+        </div>
+      </div>
+      <div className="u-container" style={{ marginTop: "var(--sp-8)", paddingTop: "var(--sp-5)", borderTop: "1px solid var(--border-hair)", font: "var(--fw-regular) var(--fs-2xs)/1.5 var(--font-body)", color: "var(--text-faint)" }}>
+        911 S.A.S · Todos los derechos reservados
+      </div>
+    </footer>
+  );
+}
+
+Object.assign(window, { TurnosAsistente, Horarios, Footer });
 })();
 
 </script>
