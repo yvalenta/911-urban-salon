@@ -231,19 +231,13 @@ img{max-width:100%;display:block}
 html{scroll-behavior:smooth}
 [data-aos]{pointer-events:auto}
 
-/* ══ Adaptación móvil ══
-   Los layouts del bundle usan estilos inline; estas reglas los colapsan
-   por selector de atributo en pantallas angostas. */
-@media (max-width: 960px){
-  :root{ --fs-7xl:72px; --fs-6xl:52px; --fs-5xl:46px; --fs-4xl:38px; --section-y:72px; }
-  div[style*="sticky"]{ position: static !important; }
-  div[style*="repeat(4"]{ grid-template-columns: repeat(2, 1fr) !important; }
-  div[style*="repeat(3"]{ grid-template-columns: 1fr !important; }
-  div[style*="1.15fr"], div[style*="1.55fr"], div[style*=".9fr"], div[style*=".8fr"],
-  div[style*="1.2fr"], div[style*="grid-template-columns: 1fr 1fr"]{ grid-template-columns: 1fr !important; }
-}
+.c-snap{scrollbar-width:none}
+.c-snap::-webkit-scrollbar{display:none}
 @media (max-width: 640px){
-  :root{ --fs-7xl:56px; --fs-6xl:42px; --fs-5xl:38px; --fs-4xl:32px; --fs-3xl:26px; --fs-2xl:24px; --section-y:56px; --card-pad-lg:20px; --card-pad:18px; }
+  :root{ --fs-7xl:56px; --fs-6xl:42px; --fs-5xl:38px; --fs-4xl:32px; --fs-3xl:26px; --fs-2xl:24px; --section-y:56px; --card-pad-lg:20px; --card-pad:18px;
+         --ls-widest:0.10em; --ls-wider:0.06em; --lh-relaxed:1.7; }
+  section#top img{ display: none; }
+  section#top{ min-height: 0 !important; }
   header{ flex-wrap: wrap; gap: var(--sp-3) !important; }
   header nav{ display: none !important }
   div[style*="repeat(4"]{ grid-template-columns: 1fr !important; }
@@ -3628,7 +3622,7 @@ Object.assign(window, {
    reales antes de publicar. */
 window.DATA_911 = {
   telefono: "573205042058",
-  direccion: "Reemplazar por la dirección real",
+  direccion: "Cra. 32, Mall La Visitación, Transversal Inferior — El Poblado, Medellín, Antioquia",
   categorias: [
     { icon: "scissors", titulo: "Estilos de corte", texto: "Cualquier corte: $50.000 · Trenzas: $100.000 · Tintura: $150.000." },
     { icon: "sparkles", titulo: "Tipos de faciales", texto: "Limpieza facial para hombres en siete pasos." },
@@ -3689,7 +3683,7 @@ window.DATA_911 = {
   ]
 };
 </script>
-<!-- ══ Panel administrativo: login + sala + cola + carta con estados y horarios editables ══ -->
+<!-- ══ Panel administrativo: login + sala + cola + carta, horarios y contacto editables ══ -->
 <script type="text/babel" data-presets="react">
 const { Card, Badge, Button, Icon, Input, StepIndicator, BarberCard, QueueStatus, TurnoTicket } = window.Ds911UrbanSalNDesignSystem_1e06a9;
 
@@ -3851,6 +3845,45 @@ function FormServicio({ inicial, rotulo, onGuardar, onCancelar }) {
 
 /* Horario de atención editable (se guarda en este navegador). */
 const CLAVE_HORARIO = "turnos911_horario";
+/* Contacto editable: WhatsApp y dirección. */
+const CLAVE_CONTACTO = "turnos911_contacto";
+
+function ContactoAdmin({ contacto, guardar }) {
+  const [editando, setEditando] = React.useState(false);
+  const [form, setForm] = React.useState(contacto);
+  const campo = k => e => setForm({ ...form, [k]: e.target.value });
+  function enviar(e) {
+    e.preventDefault();
+    const tel = String(form.telefono).replace(/[^0-9]/g, "");
+    if (tel.length < 10) return;
+    guardar({ telefono: tel, direccion: form.direccion.trim() });
+    setEditando(false);
+  }
+  return (
+    <Card padding="var(--card-pad)" style={{ display: "grid", gap: "var(--sp-3)", alignContent: "start" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)", flexWrap: "wrap" }}>
+        <Icon name="map-pin" size={18} color="var(--naranja-500)" />
+        <span style={{ font: "700 var(--fs-lg)/1 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wide)", color: "var(--text-strong)", flex: 1 }}>Contacto</span>
+        {!editando && <Button size="sm" variant="outline" onClick={() => { setForm(contacto); setEditando(true); }} iconLeft={<Icon name="pencil" size={14} />}>Editar</Button>}
+      </div>
+      {!editando ? (
+        <div style={{ display: "grid", gap: "var(--sp-2)" }}>
+          <span style={{ display: "flex", gap: 8, alignItems: "center", font: "var(--type-small)", color: "var(--text-body)" }}><Icon name="message-circle" size={15} />+{contacto.telefono}</span>
+          <span style={{ display: "flex", gap: 8, alignItems: "flex-start", font: "var(--type-small)", color: "var(--text-muted)" }}><Icon name="map-pin" size={15} />{contacto.direccion}</span>
+        </div>
+      ) : (
+        <form onSubmit={enviar} style={{ display: "grid", gap: "var(--sp-3)" }}>
+          <Input label="WhatsApp (indicativo + número, solo dígitos)" value={form.telefono} onChange={campo("telefono")} placeholder="573205042058" icon={<Icon name="message-circle" size={16} />} hint="Es el número al que llegan los turnos" />
+          <Input label="Dirección" value={form.direccion} onChange={campo("direccion")} placeholder="Cra. 32, Mall La Visitación…" icon={<Icon name="map-pin" size={16} />} />
+          <div style={{ display: "flex", gap: "var(--sp-2)", justifyContent: "flex-end" }}>
+            <Button size="sm" type="submit" iconLeft={<Icon name="check" size={14} />}>Guardar</Button>
+            <Button size="sm" variant="ghost" type="button" onClick={() => setEditando(false)}>Cancelar</Button>
+          </div>
+        </form>
+      )}
+    </Card>
+  );
+}
 
 function HorariosAdmin({ horario, guardar }) {
   const [editando, setEditando] = React.useState(false);
@@ -4045,6 +4078,13 @@ function AdminTurnos() {
     return g || D.horario || { dias: "De miércoles a lunes", etiqueta: "12:00 p.m — 9:00 p.m", apertura: 12, fin: 21, cierre: "Martes cerrado" };
   });
   const guardarHorario = h => { setHorario(h); try { localStorage.setItem(CLAVE_HORARIO, JSON.stringify(h)); } catch (e) {} };
+  /* Contacto: lo guardado en este navegador pisa lo del sitio. */
+  const [contacto, setContacto] = React.useState(() => {
+    let g = null;
+    try { g = JSON.parse(localStorage.getItem(CLAVE_CONTACTO) || "null"); } catch (e) {}
+    return g || { telefono: D.telefono, direccion: D.direccion };
+  });
+  const guardarContacto = c => { setContacto(c); try { localStorage.setItem(CLAVE_CONTACTO, JSON.stringify(c)); } catch (e) {} };
   const actualizarServicio = (cat, i, campos) => guardarServicios({ ...servicios, [cat]: servicios[cat].map((s, j) => j === i ? { ...s, ...campos } : s) });
   const agregarServicio = (cat, item) => guardarServicios({ ...servicios, [cat]: [...servicios[cat], { ...item, estado: "disponible" }] });
   const eliminarServicio = (cat, i) => guardarServicios({ ...servicios, [cat]: servicios[cat].filter((s, j) => j !== i) });
@@ -4087,7 +4127,10 @@ function AdminTurnos() {
         {vista === "panel" && <PanelBarbero cola={cola} enSilla={enSilla} retraso={retraso} equipo={equipo} llamar={llamar} terminar={terminar} siguiente={siguiente} correr={correr} renombrar={renombrar} />}
         {vista === "servicios" && (
           <div style={{ display: "grid", gap: "var(--sp-5)" }}>
-            <HorariosAdmin horario={horario} guardar={guardarHorario} />
+            <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "var(--sp-4)", alignItems: "start" }}>
+              <HorariosAdmin horario={horario} guardar={guardarHorario} />
+              <ContactoAdmin contacto={contacto} guardar={guardarContacto} />
+            </div>
             <ServiciosAdmin servicios={servicios} actualizar={actualizarServicio} agregar={agregarServicio} eliminar={eliminarServicio} />
           </div>
         )}
