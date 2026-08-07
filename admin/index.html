@@ -161,8 +161,6 @@ const sb = window.supabase.createClient(SB_URL, SB_KEY);
 
 const hoyISO = () => new Date().toLocaleDateString("en-CA");
 const hhmm = h => (h || "").slice(0, 5);
-const aMin = h => { const [H, M] = hhmm(h).split(":").map(Number); return H * 60 + M; };
-const deMin = m => String(Math.floor(((m % 1440) + 1440) % 1440 / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
 const fmtCOP = n => "$" + (n || 0).toLocaleString("es-CO");
 const transcurrido = t => {
   if (!t.iniciado_en) return null;
@@ -287,8 +285,12 @@ function useTurnos(avisar) {
     const j = i + dir;
     if (i < 0 || j < 0 || j >= esperas.length) return;
     const o = esperas[j];
-    await act(t.id, { hora: o.hora, orden: o.orden });
-    await act(o.id, { hora: t.hora, orden: t.orden }, dir < 0 ? "Adelantado: " + t.codigo : "Retrasado: " + t.codigo);
+    /* RPC atómico (db/11_rpc_cola.sql): intercambia hora+orden de ambos turnos
+       en una sola transacción; si RLS no deja tocar alguno, no cambia nada. */
+    const { error } = await sb.rpc("intercambiar_turnos", { a: t.id, b: o.id });
+    if (error) { avisar(error.message, true); return; }
+    avisar(dir < 0 ? "Adelantado: " + t.codigo : "Retrasado: " + t.codigo);
+    cargar(); // el intercambio toca dos filas: un refetch evita depender de dos eventos Realtime
   };
   const reagendar = (t, hora) => act(t.id, { hora, hora_original: t.hora_original || t.hora }, t.codigo + " reagendado a " + hhmm(hora));
   const eliminar = async t => {
@@ -297,9 +299,12 @@ function useTurnos(avisar) {
     else { avisar("Eliminado: " + t.codigo); aplicarCambio({ eventType: "DELETE", old: { id: t.id } }); }
   };
   const correr = async n => {
-    const esperas = cola.filter(x => x.estado === "espera");
-    for (const t of esperas) await sb.from("turnos").update({ hora: deMin(aMin(t.hora) + n), hora_original: t.hora_original || t.hora }).eq("id", t.id);
-    avisar("Citas corridas +" + n + " min (" + esperas.length + ")");
+    /* RPC atómico (db/11_rpc_cola.sql): un solo UPDATE en el servidor corre
+       todos los turnos en espera del día; el wrap de medianoche lo hace
+       time+interval nativo, igual que hacía deMin() con su módulo 1440. */
+    const { data, error } = await sb.rpc("correr_citas", { dia: hoyISO(), minutos: n });
+    if (error) { avisar(error.message, true); return; }
+    avisar("Citas corridas +" + n + " min (" + data + ")");
     cargar(); // cambio masivo: un solo refetch
   };
   const crear = async campos => {
