@@ -91,9 +91,27 @@ en `admin/index.html`. Campos:
 - "Enviar por WhatsApp" abre el chat del salón con el detalle del turno
   (nombre, código, servicios, total, barbero, día, hora y celular del cliente).
 
-## Panel administrativo (`/admin`)
+## Panel administrativo (`/admin`) — en vivo con Supabase
 
-Login inicial: usuario **`admin`**, contraseña **`911urban`**. Tres vistas:
+Desde la fase 1 el panel es un **dashboard conectado a Supabase** (proyecto
+`ssrrkcshhrggukknkoua`): la cola de turnos es compartida entre todos los
+dispositivos en tiempo real (Postgres + RLS + Realtime), con login real.
+
+**Cuentas** (correo sintético `usuario@911urban.local`):
+- Admin: usuario `admin`, contraseña `911urban`.
+- Barberos (rol limitado): usuario = su nombre (`samuel`, `mateo`, `julian`),
+  contraseña compartida inicial `911corte`.
+
+**Rol admin** — vistas Cola / Sala / Ajustes: tabla del día con minutos
+transcurridos por turno, Llamar/Terminar, pausar/reanudar, adelantar/retrasar
+en la fila, reagendar hora, eliminar (con confirmación), correr citas
++10/+15/+30, "Siguiente turno" y "Nuevo turno" (walk-ins).
+
+**Rol barbero** — vista "Mi día": solo su fila, turno actual en grande con
+minutos transcurridos, Empezar siguiente / Pausar / Terminar / Volver atrás.
+Las políticas RLS impiden que un barbero toque turnos ajenos.
+
+Vistas antiguas:
 
 - **Pantalla de sala** — monitor para el local: turno en silla en gigante y la fila.
 - **Panel del barbero** — cola del día con *Llamar*/*Terminar*, botón
@@ -104,14 +122,15 @@ Login inicial: usuario **`admin`**, contraseña **`911urban`**. Tres vistas:
   nombre/precio/duración, crear o eliminar servicios y ciclar su estado
   (Visible → No disponible → Borrador) con un clic en la etiqueta.
 
-**Cambiar la contraseña:** el panel guarda solo el SHA-256 de `usuario:contraseña`
-en la constante `HASH_ACCESO` de `admin/index.html`. Genera el nuevo hash con:
+**Cambiar una contraseña** (requiere `.env` local con `DATABASE_URL`):
 
 ```bash
-python3 -c "import hashlib; print(hashlib.sha256('admin:NUEVA_CLAVE'.encode()).hexdigest())"
+source .env && psql "$DATABASE_URL" -c "update auth.users set encrypted_password = crypt('NUEVA_CLAVE', gen_salt('bf')) where email = 'admin@911urban.local';"
 ```
 
-y reemplaza el valor de `HASH_ACCESO`.
+**Secretos:** `.env` (ignorado por git) guarda la conexión a Postgres y las
+llaves; en el HTML solo va la publishable key, que es pública por diseño
+(los datos los protege RLS).
 
 ## Despliegue
 
@@ -140,17 +159,12 @@ y abrir `http://localhost:8931/` (o `/admin/`).
 
 ## Limitaciones conocidas (demo sin backend)
 
-- **No hay servidor.** El login del panel es un candado del lado del cliente
-  (disuade, no protege), y **todo lo que se edita en el panel se guarda en
-  `localStorage` de ese navegador**: no cambia la página pública ni se comparte
-  entre dispositivos.
-- La cola de turnos del panel y la disponibilidad de franjas del asistente son
-  **simuladas**; los turnos confirmados no se registran en ningún lado (el
-  cliente los envía por WhatsApp).
-- Para reservas reales y compartidas (bloqueo de franjas por duración, cola en
-  vivo multi-dispositivo, ediciones del panel publicadas al instante) el paso
-  siguiente es un backend — p. ej. Supabase — manteniendo estos mismos tokens y
-  componentes.
+- La **cola del panel ya es real y compartida** (Supabase). Lo que sigue
+  simulado: la disponibilidad de franjas del asistente público y el registro de
+  reservas de clientes desde la landing (fase 3 — hoy llegan por WhatsApp y el
+  admin las crea con "Nuevo turno").
+- La edición de carta/horarios/contacto que publica directo a la página es la
+  fase 2; por ahora esos cambios se hacen en `DATA_911`.
 
 ## Pendientes
 
