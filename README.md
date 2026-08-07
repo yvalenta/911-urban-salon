@@ -102,14 +102,19 @@ dispositivos en tiempo real (Postgres + RLS + Realtime), con login real.
 - Barberos (rol limitado): usuario = su nombre (`samuel`, `mateo`, `julian`),
   contraseña compartida inicial `911corte`.
 
-**Rol admin** — vistas Cola / Sala / Ajustes: tabla del día con minutos
-transcurridos por turno, Llamar/Terminar, pausar/reanudar, adelantar/retrasar
-en la fila, reagendar hora, eliminar (con confirmación), correr citas
-+10/+15/+30, "Siguiente turno" y "Nuevo turno" (walk-ins).
+**Rol admin** — vistas Cola / Resumen / Productos / Sala / Ajustes: tabla del
+día con minutos transcurridos, Llamar, pausar/reanudar, adelantar/retrasar,
+reagendar, eliminar, correr citas, "Siguiente turno" y "Nuevo turno".
+"Terminar" abre la **confirmación de atención** (valor del servicio +
+productos vendidos), reversible con "Devolver confirmación"; "No atendido"
+saca el turno con motivo opcional. **Resumen** totaliza el día: atendidos,
+no atendidos con motivos, $ servicios, $ productos (ventas anulables) y
+total. **Productos** es el catálogo administrable (gel, cera, etc.).
 
 **Rol barbero** — vista "Mi día": solo su fila, turno actual en grande con
-minutos transcurridos, Empezar siguiente / Pausar / Terminar / Volver atrás.
-Las políticas RLS impiden que un barbero toque turnos ajenos.
+minutos, Empezar siguiente / Pausar / Terminar (con confirmación de atención
+y productos) / No atendido / Devolver, y "Vender producto" suelto. RLS
+impide tocar turnos ajenos; cada venta queda a nombre de quien la registró.
 
 Vistas antiguas:
 
