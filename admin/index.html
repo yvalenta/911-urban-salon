@@ -163,6 +163,7 @@ const hoyISO = () => new Date().toLocaleDateString("en-CA");
 const hhmm = h => (h || "").slice(0, 5);
 const aMin = h => { const [H, M] = hhmm(h).split(":").map(Number); return H * 60 + M; };
 const deMin = m => String(Math.floor(((m % 1440) + 1440) % 1440 / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+const fmtCOP = n => "$" + (n || 0).toLocaleString("es-CO");
 const transcurrido = t => {
   if (!t.iniciado_en) return null;
   const fin = t.estado === "pausado" && t.pausado_en ? new Date(t.pausado_en).getTime() : Date.now();
@@ -178,7 +179,8 @@ const I = {
   basura: "M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3", mas: "M12 5v14M5 12h14", puntos: "M12 6h.01M12 12h.01M12 18h.01",
   rayo: "M13 2L4 14h6l-1 8 9-12h-6l1-8", salir: "M10 17l5-5-5-5M15 12H3M19 3h1a1 1 0 011 1v16a1 1 0 01-1 1h-1",
   usuario: "M20 21a8 8 0 10-16 0M12 11a4 4 0 100-8 4 4 0 000 8", cola: "M4 6h16M4 12h10M4 18h7",
-  tv: "M3 5h18v12H3zM8 21h8", ajustes: "M12 15a3 3 0 100-6 3 3 0 000 6M19 12a7 7 0 01-.1 1.2l2 1.6-2 3.4-2.4-1a7 7 0 01-2 1.2L14 21h-4l-.4-2.6a7 7 0 01-2-1.2l-2.4 1-2-3.4 2-1.6A7 7 0 015 12a7 7 0 01.1-1.2l-2-1.6 2-3.4 2.4 1a7 7 0 012-1.2L10 3h4l.4 2.6a7 7 0 012 1.2l2.4-1 2 3.4-2 1.6c.1.4.2.8.2 1.2z"
+  tv: "M3 5h18v12H3zM8 21h8", noAtendio: "M15 9l-6 6M9 9l6 6M21 12a9 9 0 11-18 0 9 9 0 0118 0",
+  caja: "M3 9l2-5h14l2 5M3 9h18v11H3zM10 13h4", carrito: "M6 6h15l-1.5 8H8L6 6zM6 6L5 3H2M9 20a1 1 0 100-2 1 1 0 000 2zM18 20a1 1 0 100-2 1 1 0 000 2z", ajustes: "M12 15a3 3 0 100-6 3 3 0 000 6M19 12a7 7 0 01-.1 1.2l2 1.6-2 3.4-2.4-1a7 7 0 01-2 1.2L14 21h-4l-.4-2.6a7 7 0 01-2-1.2l-2.4 1-2-3.4 2-1.6A7 7 0 015 12a7 7 0 01.1-1.2l-2-1.6 2-3.4 2.4 1a7 7 0 012-1.2L10 3h4l.4 2.6a7 7 0 012 1.2l2.4-1 2 3.4-2 1.6c.1.4.2.8.2 1.2z"
 };
 
 /* ── Toasts ── */
@@ -204,7 +206,7 @@ function useTurnos(avisar) {
   const [, setTick] = React.useState(0);
 
   const cargar = React.useCallback(async () => {
-    const { data, error } = await sb.from("turnos").select("*").eq("fecha", hoyISO()).neq("estado", "cancelado").order("hora").order("orden");
+    const { data, error } = await sb.from("turnos").select("*").eq("fecha", hoyISO()).order("hora").order("orden");
     if (error) avisar("No pude cargar la cola: " + error.message, true);
     else setCola(data || []);
   }, []);
@@ -228,9 +230,20 @@ function useTurnos(avisar) {
 
   const llamar = async t => {
     const abierto = cola.find(x => x.barbero_nombre === t.barbero_nombre && (x.estado === "silla" || x.estado === "pausado") && x.id !== t.id);
-    if (abierto) await act(abierto.id, { estado: "listo" });
+    if (abierto) { avisar("Confirma o pausa el turno " + abierto.codigo + " antes de llamar otro", true); return; }
     await act(t.id, { estado: "silla", iniciado_en: new Date().toISOString(), pausado_en: null, pausa_acum_seg: 0 }, "En silla: " + t.codigo);
   };
+  /* Confirmación de atención: cierra el turno con su monto y registra productos vendidos. */
+  const confirmar = async (t, monto, items, user, vendedor) => {
+    await act(t.id, { estado: "listo", precio_total: monto === "" ? t.precio_total : (parseInt(monto, 10) || 0) }, "Atención confirmada: " + t.codigo);
+    if (items.length) {
+      const filas = items.map(i => ({ producto_id: i.producto_id, nombre: i.nombre, precio: i.precio, cantidad: i.cantidad, turno_id: t.id, vendido_por: user, vendedor, fecha: hoyISO() }));
+      const { error } = await sb.from("ventas").insert(filas);
+      if (error) avisar(error.message, true); else avisar("Productos registrados: " + items.reduce((a, i) => a + i.cantidad, 0));
+    }
+  };
+  /* No atendido: saca el turno de la fila con motivo opcional. Reversible. */
+  const noAtendido = (t, motivo) => act(t.id, { estado: "cancelado", motivo_no_atencion: motivo || null, iniciado_en: null, pausado_en: null, pausa_acum_seg: 0 }, "No atendido: " + t.codigo);
   const terminar = t => act(t.id, { estado: "listo" }, "Atendido: " + t.codigo);
   const pausar = t => act(t.id, { estado: "pausado", pausado_en: new Date().toISOString() }, "Pausado: " + t.codigo);
   const reanudar = t => act(t.id, {
@@ -238,8 +251,8 @@ function useTurnos(avisar) {
     pausa_acum_seg: (t.pausa_acum_seg || 0) + Math.max(0, Math.floor((Date.now() - new Date(t.pausado_en || Date.now()).getTime()) / 1000))
   }, "Reanudado: " + t.codigo);
   const atras = t => t.estado === "listo"
-    ? act(t.id, { estado: "silla", iniciado_en: t.iniciado_en || new Date().toISOString() }, "Reabierto: " + t.codigo)
-    : act(t.id, { estado: "espera", iniciado_en: null, pausado_en: null, pausa_acum_seg: 0 }, "De vuelta en espera: " + t.codigo);
+    ? act(t.id, { estado: "silla", iniciado_en: t.iniciado_en || new Date().toISOString() }, "Confirmación devuelta: " + t.codigo + " vuelve a silla")
+    : act(t.id, { estado: "espera", iniciado_en: null, pausado_en: null, pausa_acum_seg: 0, motivo_no_atencion: null }, "De vuelta en espera: " + t.codigo);
   const mover = async (t, dir) => {
     const esperas = cola.filter(x => x.estado === "espera");
     const i = esperas.findIndex(x => x.id === t.id);
@@ -273,7 +286,59 @@ function useTurnos(avisar) {
     if (prox) llamar(prox); else avisar("No hay turnos en espera", true);
   };
 
-  return { cola, vivo, llamar, terminar, pausar, reanudar, atras, mover, reagendar, eliminar, correr, crear, siguiente };
+  return { cola, vivo, llamar, terminar, confirmar, noAtendido, pausar, reanudar, atras, mover, reagendar, eliminar, correr, crear, siguiente };
+}
+
+/* ── Catálogo de productos (administrable) ── */
+function useProductos(avisar) {
+  const [productos, setProductos] = React.useState([]);
+  const cargar = React.useCallback(async () => {
+    const { data, error } = await sb.from("productos").select("*").order("nombre");
+    if (!error) setProductos(data || []);
+  }, []);
+  React.useEffect(() => {
+    cargar();
+    const c = sb.channel("productos-vivo").on("postgres_changes", { event: "*", schema: "public", table: "productos" }, cargar).subscribe();
+    return () => sb.removeChannel(c);
+  }, [cargar]);
+  const guardar = async (id, campos, ok) => {
+    const q = id ? sb.from("productos").update(campos).eq("id", id) : sb.from("productos").insert(campos);
+    const { error } = await q;
+    if (error) avisar(error.message, true); else avisar(ok);
+    cargar();
+  };
+  const eliminar = async pr => {
+    const { error } = await sb.from("productos").delete().eq("id", pr.id);
+    if (error) avisar(error.message, true); else avisar("Producto eliminado: " + pr.nombre);
+    cargar();
+  };
+  return { productos, activos: productos.filter(p => p.activo), guardar, eliminar };
+}
+
+/* ── Ventas del día ── */
+function useVentas(avisar) {
+  const [ventas, setVentas] = React.useState([]);
+  const cargar = React.useCallback(async () => {
+    const { data, error } = await sb.from("ventas").select("*").eq("fecha", hoyISO()).order("creado_en", { ascending: false });
+    if (!error) setVentas(data || []);
+  }, []);
+  React.useEffect(() => {
+    cargar();
+    const c = sb.channel("ventas-vivo").on("postgres_changes", { event: "*", schema: "public", table: "ventas" }, cargar).subscribe();
+    return () => sb.removeChannel(c);
+  }, [cargar]);
+  const vender = async (items, user, vendedor, turno_id) => {
+    const filas = items.map(i => ({ producto_id: i.producto_id, nombre: i.nombre, precio: i.precio, cantidad: i.cantidad, turno_id: turno_id || null, vendido_por: user, vendedor, fecha: hoyISO() }));
+    const { error } = await sb.from("ventas").insert(filas);
+    if (error) avisar(error.message, true); else avisar("Venta registrada");
+    cargar();
+  };
+  const anular = async v => {
+    const { error } = await sb.from("ventas").delete().eq("id", v.id);
+    if (error) avisar(error.message, true); else avisar("Venta anulada: " + v.nombre);
+    cargar();
+  };
+  return { ventas, vender, anular };
 }
 
 /* ── Piezas ── */
@@ -282,6 +347,7 @@ function EstadoTurno({ t }) {
   if (t.estado === "espera") return <span className="badge">En espera</span>;
   if (t.estado === "silla") return <span className="badge brand vivo"><span className="pt" />En silla · {min} min</span>;
   if (t.estado === "pausado") return <span className="badge warn"><Ic d={I.pausa} s={11} />Pausado · {min} min</span>;
+  if (t.estado === "cancelado") return <span className="badge bad">No atendido</span>;
   return <span className="badge ok"><Ic d={I.check} s={11} />Atendido</span>;
 }
 function HoraTurno({ t }) {
@@ -303,7 +369,8 @@ function MenuFila({ t, admin, ops, abierto, setAbierto }) {
           {t.estado === "espera" && admin && <button onClick={cerrar(() => ops.abrirReagendar(t))}><Ic d={I.reloj} s={14} />Reagendar hora…</button>}
           {t.estado === "silla" && <button onClick={cerrar(() => ops.pausar(t))}><Ic d={I.pausa} s={14} />Pausar turno</button>}
           {t.estado === "pausado" && <button onClick={cerrar(() => ops.reanudar(t))}><Ic d={I.play} s={14} />Reanudar</button>}
-          {t.estado !== "espera" && <button onClick={cerrar(() => ops.atras(t))}><Ic d={I.atras} s={14} />{t.estado === "listo" ? "Reabrir (volver a silla)" : "Volver a espera"}</button>}
+          {t.estado !== "espera" && <button onClick={cerrar(() => ops.atras(t))}><Ic d={I.atras} s={14} />{t.estado === "listo" ? "Devolver confirmación" : "Volver a espera"}</button>}
+          {["espera", "silla", "pausado"].includes(t.estado) && <button onClick={cerrar(() => ops.abrirNoAtendido(t))}><Ic d={I.noAtendio} s={14} />No atendido…</button>}
           {admin && <div className="sep" />}
           {admin && <button className="rojo" onClick={cerrar(() => ops.abrirEliminar(t))}><Ic d={I.basura} s={14} />Eliminar turno</button>}
         </div>
@@ -313,16 +380,18 @@ function MenuFila({ t, admin, ops, abierto, setAbierto }) {
 }
 
 /* ── Vista: cola (admin) ── */
-function VistaCola({ T }) {
+function VistaCola({ T, P, user, nombreUser }) {
   const [menu, setMenu] = React.useState(null);
   const [reag, setReag] = React.useState(null);
   const [borra, setBorra] = React.useState(null);
   const [nuevo, setNuevo] = React.useState(false);
+  const [confirma, setConfirma] = React.useState(null);
+  const [noAt, setNoAt] = React.useState(null);
   const espera = T.cola.filter(t => t.estado === "espera").length;
   const enSilla = T.cola.filter(t => t.estado === "silla" || t.estado === "pausado").length;
   const listos = T.cola.filter(t => t.estado === "listo").length;
-  const corridos = T.cola.filter(t => t.hora_original && hhmm(t.hora_original) !== hhmm(t.hora)).length;
-  const ops = { ...T, abrirReagendar: setReag, abrirEliminar: setBorra };
+  const noAtendidos = T.cola.filter(t => t.estado === "cancelado").length;
+  const ops = { ...T, abrirReagendar: setReag, abrirEliminar: setBorra, abrirNoAtendido: setNoAt };
 
   return (
     <React.Fragment>
@@ -330,7 +399,7 @@ function VistaCola({ T }) {
         <div className="stat"><span className="eyebrow">En espera</span><b>{espera}</b></div>
         <div className="stat naranja"><span className="eyebrow">En silla</span><b>{enSilla}</b></div>
         <div className="stat"><span className="eyebrow">Atendidos hoy</span><b>{listos}</b></div>
-        <div className="stat"><span className="eyebrow">Citas corridas</span><b>{corridos}</b></div>
+        <div className="stat"><span className="eyebrow">No atendidos</span><b>{noAtendidos}</b></div>
       </div>
 
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
@@ -345,17 +414,17 @@ function VistaCola({ T }) {
           <thead><tr><th>Código</th><th>Cliente</th><th>Servicios</th><th>Barbero</th><th>Hora</th><th>Estado</th><th style={{ textAlign: "right" }}>Acciones</th></tr></thead>
           <tbody>
             {T.cola.map(t => (
-              <tr key={t.id} className={t.estado === "listo" ? "dim" : ""}>
+              <tr key={t.id} className={t.estado === "listo" || t.estado === "cancelado" ? "dim" : ""}>
                 <td><span className="cod">{t.codigo}</span></td>
                 <td style={{ color: "var(--tx)", fontWeight: 600 }}>{t.cliente}</td>
-                <td className="tenue" style={{ maxWidth: 220 }}>{t.servicios}</td>
+                <td className="tenue" style={{ maxWidth: 220 }}>{t.servicios}{t.estado === "cancelado" && t.motivo_no_atencion && <div style={{ color: "#FF8A8E", fontSize: 12 }}>Motivo: {t.motivo_no_atencion}</div>}</td>
                 <td className="tenue">{t.barbero_nombre}</td>
                 <td><HoraTurno t={t} /></td>
                 <td><EstadoTurno t={t} /></td>
                 <td>
                   <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", alignItems: "center" }}>
                     {t.estado === "espera" && <button className="btn outline sm" onClick={() => T.llamar(t)}><Ic d={I.play} s={12} />Llamar</button>}
-                    {t.estado === "silla" && <button className="btn ok sm" onClick={() => T.terminar(t)}><Ic d={I.check} s={12} />Terminar</button>}
+                    {t.estado === "silla" && <button className="btn ok sm" onClick={() => setConfirma(t)}><Ic d={I.check} s={12} />Terminar</button>}
                     {t.estado === "pausado" && <button className="btn outline sm" onClick={() => T.reanudar(t)}><Ic d={I.play} s={12} />Reanudar</button>}
                     <MenuFila t={t} admin ops={ops} abierto={menu} setAbierto={setMenu} />
                   </div>
@@ -381,7 +450,133 @@ function VistaCola({ T }) {
         </div>
       )}
       {nuevo && <DialogoNuevo T={T} onCerrar={() => setNuevo(false)} />}
+      {confirma && <DialogoConfirmar t={confirma} productos={P.activos} onOk={(m, items) => { T.confirmar(confirma, m, items, user, nombreUser); setConfirma(null); }} onNo={() => setConfirma(null)} />}
+      {noAt && <DialogoNoAtendido t={noAt} onOk={m => { T.noAtendido(noAt, m); setNoAt(null); }} onNo={() => setNoAt(null)} />}
     </React.Fragment>
+  );
+}
+
+/* ── Diálogo: confirmar atención (monto + productos vendidos) ── */
+function DialogoConfirmar({ t, productos, onOk, onNo }) {
+  const [monto, setMonto] = React.useState(t.precio_total != null ? String(t.precio_total) : "");
+  const [items, setItems] = React.useState([]);
+  const [sel, setSel] = React.useState(productos[0] ? productos[0].id : "");
+  const agregar = () => {
+    const pr = productos.find(p => p.id === sel);
+    if (!pr) return;
+    setItems(li => {
+      const ya = li.find(i => i.producto_id === pr.id);
+      return ya ? li.map(i => i.producto_id === pr.id ? { ...i, cantidad: i.cantidad + 1 } : i)
+                : [...li, { producto_id: pr.id, nombre: pr.nombre, precio: pr.precio, cantidad: 1 }];
+    });
+  };
+  const quitar = id => setItems(li => li.filter(i => i.producto_id !== id));
+  const totalProd = items.reduce((a, i) => a + i.precio * i.cantidad, 0);
+  const total = (parseInt(monto, 10) || 0) + totalProd;
+  return (
+    <div className="velo" onClick={onNo}>
+      <div className="dialogo" onClick={e => e.stopPropagation()}>
+        <h3>Confirmar atención · {t.codigo}</h3>
+        <p style={{ margin: 0 }} className="tenue">{t.cliente} · {t.servicios}. Si confirmas por error, puedes devolverlo desde el menú del turno.</p>
+        <label className="fld"><span>Valor de los servicios (COP)</span>
+          <input className="input" type="number" min="0" step="1000" value={monto} onChange={e => setMonto(e.target.value)} placeholder="50000" />
+        </label>
+        {productos.length > 0 && (
+          <div style={{ display: "grid", gap: 8 }}>
+            <span className="eyebrow">Productos vendidos (opcional)</span>
+            <div style={{ display: "flex", gap: 8 }}>
+              <select className="input" value={sel} onChange={e => setSel(e.target.value)} style={{ flex: 1 }}>
+                {productos.map(pr => <option key={pr.id} value={pr.id}>{pr.nombre} · {fmtCOP(pr.precio)}</option>)}
+              </select>
+              <button type="button" className="btn outline" onClick={agregar}><Ic d={I.mas} s={14} />Agregar</button>
+            </div>
+            {items.map(i => (
+              <div key={i.producto_id} style={{ display: "flex", gap: 10, alignItems: "center", background: "var(--raised)", border: "1px solid var(--line)", borderRadius: 8, padding: "8px 10px" }}>
+                <span style={{ flex: 1, color: "var(--tx)" }}>{i.nombre} × {i.cantidad}</span>
+                <span className="tenue">{fmtCOP(i.precio * i.cantidad)}</span>
+                <button className="icon-btn" onClick={() => quitar(i.producto_id)} aria-label={"Quitar " + i.nombre}><Ic d={I.basura} s={13} /></button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--line)", paddingTop: 12 }}>
+          <span className="eyebrow">Total</span>
+          <b style={{ font: "400 26px/1 var(--disp)", color: "var(--brand)" }}>{fmtCOP(total)}</b>
+        </div>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <button className="btn ghost" onClick={onNo}>Cancelar</button>
+          <button className="btn primary" onClick={() => onOk(monto, items)}><Ic d={I.check} s={14} />Confirmar atención</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Diálogo: no atendido (motivo opcional) ── */
+function DialogoNoAtendido({ t, onOk, onNo }) {
+  const [motivo, setMotivo] = React.useState("");
+  const rapidos = ["No llegó", "Se fue por la espera", "Reprogramó", "Error al crearlo"];
+  return (
+    <div className="velo" onClick={onNo}>
+      <div className="dialogo" onClick={e => e.stopPropagation()}>
+        <h3>No atendido · {t.codigo}</h3>
+        <p style={{ margin: 0 }} className="tenue">{t.cliente} sale de la fila. El motivo es opcional y queda en el resumen del día. Reversible desde el menú.</p>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {rapidos.map(r => <button key={r} className={"btn sm " + (motivo === r ? "primary" : "outline")} onClick={() => setMotivo(motivo === r ? "" : r)}>{r}</button>)}
+        </div>
+        <label className="fld"><span>Motivo (opcional)</span>
+          <input className="input" value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Escribe o elige uno" />
+        </label>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <button className="btn ghost" onClick={onNo}>Cancelar</button>
+          <button className="btn danger" onClick={() => onOk(motivo.trim())}><Ic d={I.noAtendio} s={14} />Marcar no atendido</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Diálogo: venta suelta de productos ── */
+function DialogoVenta({ productos, onOk, onNo }) {
+  const [items, setItems] = React.useState([]);
+  const [sel, setSel] = React.useState(productos[0] ? productos[0].id : "");
+  const agregar = () => {
+    const pr = productos.find(p => p.id === sel);
+    if (!pr) return;
+    setItems(li => {
+      const ya = li.find(i => i.producto_id === pr.id);
+      return ya ? li.map(i => i.producto_id === pr.id ? { ...i, cantidad: i.cantidad + 1 } : i)
+                : [...li, { producto_id: pr.id, nombre: pr.nombre, precio: pr.precio, cantidad: 1 }];
+    });
+  };
+  const total = items.reduce((a, i) => a + i.precio * i.cantidad, 0);
+  return (
+    <div className="velo" onClick={onNo}>
+      <div className="dialogo" onClick={e => e.stopPropagation()}>
+        <h3>Vender productos</h3>
+        <div style={{ display: "flex", gap: 8 }}>
+          <select className="input" value={sel} onChange={e => setSel(e.target.value)} style={{ flex: 1 }}>
+            {productos.map(pr => <option key={pr.id} value={pr.id}>{pr.nombre} · {fmtCOP(pr.precio)}</option>)}
+          </select>
+          <button type="button" className="btn outline" onClick={agregar}><Ic d={I.mas} s={14} />Agregar</button>
+        </div>
+        {items.map(i => (
+          <div key={i.producto_id} style={{ display: "flex", gap: 10, alignItems: "center", background: "var(--raised)", border: "1px solid var(--line)", borderRadius: 8, padding: "8px 10px" }}>
+            <span style={{ flex: 1, color: "var(--tx)" }}>{i.nombre} × {i.cantidad}</span>
+            <span className="tenue">{fmtCOP(i.precio * i.cantidad)}</span>
+            <button className="icon-btn" onClick={() => setItems(li => li.filter(x => x.producto_id !== i.producto_id))}><Ic d={I.basura} s={13} /></button>
+          </div>
+        ))}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--line)", paddingTop: 12 }}>
+          <span className="eyebrow">Total</span>
+          <b style={{ font: "400 24px/1 var(--disp)", color: "var(--brand)" }}>{fmtCOP(total)}</b>
+        </div>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <button className="btn ghost" onClick={onNo}>Cancelar</button>
+          <button className="btn primary" disabled={!items.length} onClick={() => onOk(items)}><Ic d={I.carrito} s={14} />Registrar venta</button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -440,11 +635,14 @@ function DialogoNuevo({ T, onCerrar }) {
 }
 
 /* ── Vista: mi día (barbero) ── */
-function VistaMiDia({ T, nombre }) {
+function VistaMiDia({ T, P, V, nombre, user }) {
   const mios = T.cola.filter(t => t.barbero_nombre === nombre);
   const actual = mios.find(t => t.estado === "silla" || t.estado === "pausado");
   const ultimoListo = [...mios].reverse().find(t => t.estado === "listo");
   const esperan = mios.filter(t => t.estado === "espera");
+  const [confirma, setConfirma] = React.useState(null);
+  const [noAt, setNoAt] = React.useState(null);
+  const [venta, setVenta] = React.useState(false);
   return (
     <div className="mi-dia">
       {actual ? (
@@ -458,8 +656,8 @@ function VistaMiDia({ T, nombre }) {
             {actual.estado === "silla"
               ? <button className="btn outline" onClick={() => T.pausar(actual)}><Ic d={I.pausa} s={14} />Pausar</button>
               : <button className="btn outline" onClick={() => T.reanudar(actual)}><Ic d={I.play} s={14} />Reanudar</button>}
-            <button className="btn ok" onClick={() => T.terminar(actual)}><Ic d={I.check} s={14} />Terminar</button>
-            <button className="btn ghost" onClick={() => T.atras(actual)}><Ic d={I.atras} s={14} />Volver a espera</button>
+            <button className="btn ok" onClick={() => setConfirma(actual)}><Ic d={I.check} s={14} />Terminar</button>
+            <button className="btn ghost" onClick={() => setNoAt(actual)}><Ic d={I.noAtendio} s={14} />No atendido</button>
           </div>
         </div>
       ) : (
@@ -473,6 +671,7 @@ function VistaMiDia({ T, nombre }) {
       <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
         <h2 style={{ font: "400 20px/1 var(--disp)", textTransform: "uppercase" }}>Mi fila</h2>
         <span className="badge">{esperan.length} en espera</span>
+        <button className="btn outline sm" style={{ marginLeft: "auto" }} onClick={() => setVenta(true)}><Ic d={I.carrito} s={13} />Vender producto</button>
       </div>
       {mios.filter(t => t.estado !== "silla" && t.estado !== "pausado").map(t => (
         <div key={t.id} className="turno-item" style={{ opacity: t.estado === "listo" ? .5 : 1 }}>
@@ -482,10 +681,15 @@ function VistaMiDia({ T, nombre }) {
             <div className="tenue">{t.servicios} · <HoraTurno t={t} /></div>
           </div>
           {t.estado === "espera" && <button className="btn outline sm" onClick={() => T.llamar(t)}><Ic d={I.play} s={12} />Empezar</button>}
-          {t.estado === "listo" && <button className="btn ghost sm" onClick={() => T.atras(t)}><Ic d={I.atras} s={12} />Reabrir</button>}
+          {t.estado === "espera" && <button className="icon-btn" title="No atendido" onClick={() => setNoAt(t)}><Ic d={I.noAtendio} s={14} /></button>}
+          {t.estado === "listo" && <button className="btn ghost sm" onClick={() => T.atras(t)}><Ic d={I.atras} s={12} />Devolver</button>}
+          {t.estado === "cancelado" && <button className="btn ghost sm" onClick={() => T.atras(t)}><Ic d={I.atras} s={12} />Reactivar</button>}
         </div>
       ))}
       {!mios.length && <div className="card tenue">Hoy no tienes turnos asignados.</div>}
+      {confirma && <DialogoConfirmar t={confirma} productos={P.activos} onOk={(m, items) => { T.confirmar(confirma, m, items, user, nombre); setConfirma(null); }} onNo={() => setConfirma(null)} />}
+      {noAt && <DialogoNoAtendido t={noAt} onOk={m => { T.noAtendido(noAt, m); setNoAt(null); }} onNo={() => setNoAt(null)} />}
+      {venta && <DialogoVenta productos={P.activos} onOk={items => { V.vender(items, user, nombre); setVenta(false); }} onNo={() => setVenta(false)} />}
     </div>
   );
 }
@@ -521,6 +725,136 @@ function VistaSala({ T }) {
         {!fila.length && <span className="tenue">Nadie en espera.</span>}
       </div>
     </div>
+  );
+}
+
+/* ── Vista: resumen del día (admin) ── */
+function VistaResumen({ T, V }) {
+  const atendidos = T.cola.filter(t => t.estado === "listo");
+  const noAtendidos = T.cola.filter(t => t.estado === "cancelado");
+  const totalServicios = atendidos.reduce((a, t) => a + (t.precio_total || 0), 0);
+  const totalProductos = V.ventas.reduce((a, v) => a + v.precio * v.cantidad, 0);
+  return (
+    <React.Fragment>
+      <div className="stats" style={{ gridTemplateColumns: "repeat(4,1fr)" }}>
+        <div className="stat"><span className="eyebrow">Atendidos</span><b>{atendidos.length}</b></div>
+        <div className="stat"><span className="eyebrow">No atendidos</span><b>{noAtendidos.length}</b></div>
+        <div className="stat"><span className="eyebrow">Servicios</span><b style={{ fontSize: 24 }}>{fmtCOP(totalServicios)}</b></div>
+        <div className="stat naranja"><span className="eyebrow">Total día (+ productos)</span><b style={{ fontSize: 24 }}>{fmtCOP(totalServicios + totalProductos)}</b></div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, alignItems: "start" }}>
+        <div className="card" style={{ display: "grid", gap: 10 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+            <span className="eyebrow">Ventas de productos</span>
+            <b style={{ color: "var(--tx)" }}>{fmtCOP(totalProductos)}</b>
+          </div>
+          {V.ventas.map(v => (
+            <div key={v.id} style={{ display: "flex", gap: 10, alignItems: "center", borderBottom: "1px solid var(--line)", paddingBottom: 8 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ color: "var(--tx)", fontWeight: 600 }}>{v.nombre} × {v.cantidad}</div>
+                <div className="tenue">{v.vendedor || "—"} · {new Date(v.creado_en).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}</div>
+              </div>
+              <span style={{ color: "var(--brand)", fontWeight: 700 }}>{fmtCOP(v.precio * v.cantidad)}</span>
+              <button className="icon-btn" title="Anular venta" onClick={() => V.anular(v)}><Ic d={I.basura} s={13} /></button>
+            </div>
+          ))}
+          {!V.ventas.length && <span className="tenue">Sin ventas de productos hoy.</span>}
+        </div>
+        <div className="card" style={{ display: "grid", gap: 10 }}>
+          <span className="eyebrow">No atendidos y motivos</span>
+          {noAtendidos.map(t => (
+            <div key={t.id} style={{ display: "flex", gap: 10, alignItems: "center", borderBottom: "1px solid var(--line)", paddingBottom: 8 }}>
+              <span className="cod">{t.codigo}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ color: "var(--tx)", fontWeight: 600 }}>{t.cliente}</div>
+                <div className="tenue">{t.motivo_no_atencion || "Sin motivo registrado"}</div>
+              </div>
+              <span className="tenue">{t.barbero_nombre}</span>
+            </div>
+          ))}
+          {!noAtendidos.length && <span className="tenue">Todos los turnos del día se han atendido. 🎉</span>}
+        </div>
+      </div>
+      <div className="card" style={{ display: "grid", gap: 8 }}>
+        <span className="eyebrow">Atendidos hoy</span>
+        {atendidos.map(t => (
+          <div key={t.id} style={{ display: "flex", gap: 10, alignItems: "center", borderBottom: "1px solid var(--line)", paddingBottom: 6 }}>
+            <span className="cod">{t.codigo}</span>
+            <span style={{ color: "var(--tx)", fontWeight: 600 }}>{t.cliente}</span>
+            <span className="tenue" style={{ flex: 1 }}>{t.servicios} · {t.barbero_nombre}</span>
+            <span style={{ color: "var(--tx)", fontWeight: 700 }}>{fmtCOP(t.precio_total || 0)}</span>
+          </div>
+        ))}
+        {!atendidos.length && <span className="tenue">Aún no hay atenciones confirmadas hoy.</span>}
+      </div>
+    </React.Fragment>
+  );
+}
+
+/* ── Vista: productos (admin, CRUD completo) ── */
+function VistaProductos({ P }) {
+  const [form, setForm] = React.useState(null); // {id?, nombre, precio}
+  const [borrar, setBorrar] = React.useState(null);
+  return (
+    <React.Fragment>
+      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <button className="btn primary" onClick={() => setForm({ nombre: "", precio: "" })}><Ic d={I.mas} s={14} />Nuevo producto</button>
+        <span className="tenue">Gel, cera y lo que quieras comercializar. Los inactivos no aparecen al vender.</span>
+      </div>
+      <div className="tabla-wrap">
+        <table className="tabla" style={{ minWidth: 520 }}>
+          <thead><tr><th>Producto</th><th>Precio</th><th>Estado</th><th style={{ textAlign: "right" }}>Acciones</th></tr></thead>
+          <tbody>
+            {P.productos.map(pr => (
+              <tr key={pr.id} className={pr.activo ? "" : "dim"}>
+                <td style={{ color: "var(--tx)", fontWeight: 600 }}>{pr.nombre}</td>
+                <td style={{ color: "var(--brand)", fontWeight: 700 }}>{fmtCOP(pr.precio)}</td>
+                <td>
+                  <button onClick={() => P.guardar(pr.id, { activo: !pr.activo }, pr.activo ? "Desactivado: " + pr.nombre : "Activado: " + pr.nombre)}>
+                    <span className={"badge " + (pr.activo ? "ok" : "")}>{pr.activo ? "En venta" : "Inactivo"}</span>
+                  </button>
+                </td>
+                <td>
+                  <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                    <button className="btn ghost sm" onClick={() => setForm({ id: pr.id, nombre: pr.nombre, precio: String(pr.precio) })}>Editar</button>
+                    <button className="icon-btn" onClick={() => setBorrar(pr)} aria-label={"Eliminar " + pr.nombre}><Ic d={I.basura} s={14} /></button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {!P.productos.length && <tr><td colSpan={4} className="tenue" style={{ textAlign: "center", padding: 26 }}>Sin productos. Crea el primero.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+      {form && (
+        <div className="velo" onClick={() => setForm(null)}>
+          <div className="dialogo" onClick={e => e.stopPropagation()}>
+            <h3>{form.id ? "Editar producto" : "Nuevo producto"}</h3>
+            <label className="fld"><span>Nombre</span><input className="input" value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} placeholder="Gel fijador" /></label>
+            <label className="fld"><span>Precio (COP)</span><input className="input" type="number" min="0" step="500" value={form.precio} onChange={e => setForm({ ...form, precio: e.target.value })} placeholder="25000" /></label>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button className="btn ghost" onClick={() => setForm(null)}>Cancelar</button>
+              <button className="btn primary" disabled={form.nombre.trim().length < 2 || !(parseInt(form.precio, 10) >= 0)} onClick={() => {
+                P.guardar(form.id || null, { nombre: form.nombre.trim(), precio: parseInt(form.precio, 10) || 0 }, form.id ? "Producto actualizado" : "Producto creado");
+                setForm(null);
+              }}><Ic d={I.check} s={14} />Guardar</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {borrar && (
+        <div className="velo" onClick={() => setBorrar(null)}>
+          <div className="dialogo" onClick={e => e.stopPropagation()}>
+            <h3>Eliminar producto</h3>
+            <p style={{ margin: 0 }}>Se elimina <b style={{ color: "var(--tx)" }}>{borrar.nombre}</b> del catálogo (las ventas ya registradas se conservan). Si solo quieres pausarlo, usa "Inactivo".</p>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button className="btn ghost" onClick={() => setBorrar(null)}>Cancelar</button>
+              <button className="btn danger" onClick={() => { P.eliminar(borrar); setBorrar(null); }}><Ic d={I.basura} s={14} />Eliminar</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </React.Fragment>
   );
 }
 
@@ -576,8 +910,10 @@ function Shell({ sesion, salir }) {
   const admin = rol === "admin";
   const [avisar, toastsUI] = useToasts();
   const T = useTurnos(avisar);
+  const P = useProductos(avisar);
+  const V = useVentas(avisar);
   const [vista, setVista] = React.useState(admin ? "cola" : "midia");
-  const titulo = { cola: "Cola de hoy", midia: "Mi día", sala: "Pantalla de sala", ajustes: "Ajustes" }[vista];
+  const titulo = { cola: "Cola de hoy", midia: "Mi día", resumen: "Resumen del día", productos: "Productos", sala: "Pantalla de sala", ajustes: "Ajustes" }[vista];
   const fecha = new Date().toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" });
 
   return (
@@ -593,6 +929,8 @@ function Shell({ sesion, salir }) {
         <nav>
           {admin && <button className={"nav-item" + (vista === "cola" ? " on" : "")} onClick={() => setVista("cola")}><Ic d={I.cola} s={15} />Cola</button>}
           {!admin && <button className={"nav-item" + (vista === "midia" ? " on" : "")} onClick={() => setVista("midia")}><Ic d={I.usuario} s={15} />Mi día</button>}
+          {admin && <button className={"nav-item" + (vista === "resumen" ? " on" : "")} onClick={() => setVista("resumen")}><Ic d={I.caja} s={15} />Resumen</button>}
+          {admin && <button className={"nav-item" + (vista === "productos" ? " on" : "")} onClick={() => setVista("productos")}><Ic d={I.carrito} s={15} />Productos</button>}
           <button className={"nav-item" + (vista === "sala" ? " on" : "")} onClick={() => setVista("sala")}><Ic d={I.tv} s={15} />Sala</button>
           {admin && <button className={"nav-item" + (vista === "ajustes" ? " on" : "")} onClick={() => setVista("ajustes")}><Ic d={I.ajustes} s={15} />Ajustes</button>}
         </nav>
@@ -613,8 +951,10 @@ function Shell({ sesion, salir }) {
           <span className="tenue" style={{ textTransform: "capitalize" }}>{fecha}</span>
           <span className={"badge " + (T.vivo ? "ok vivo" : "warn")} style={{ marginLeft: "auto" }}><span className="pt" />{T.vivo ? "En vivo" : "Conectando…"}</span>
         </div>
-        {vista === "cola" && admin && <VistaCola T={T} />}
-        {vista === "midia" && !admin && <VistaMiDia T={T} nombre={nombre} />}
+        {vista === "cola" && admin && <VistaCola T={T} P={P} user={sesion.user.id} nombreUser={nombre} />}
+        {vista === "midia" && !admin && <VistaMiDia T={T} P={P} V={V} nombre={nombre} user={sesion.user.id} />}
+        {vista === "resumen" && admin && <VistaResumen T={T} V={V} />}
+        {vista === "productos" && admin && <VistaProductos P={P} />}
         {vista === "sala" && <VistaSala T={T} />}
         {vista === "ajustes" && admin && <VistaAjustes />}
       </main>
