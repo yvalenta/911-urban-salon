@@ -4222,11 +4222,16 @@ function Footer() {
           <h4 style={{ font: "700 var(--fs-sm)/1 var(--font-condensed)", letterSpacing: "var(--ls-wider)", color: "var(--text-strong)", margin: 0 }}>Contacto</h4>
           <a href={"https://wa.me/" + D.telefono} style={{ display: "flex", gap: 8, alignItems: "center", font: "var(--type-small)" }}><Icon name="message-circle" size={16} />WhatsApp</a>
           <a href="#" style={{ display: "flex", gap: 8, alignItems: "center", font: "var(--type-small)" }}><Icon name="instagram" size={16} />@911urbansalon</a>
-          <span style={{ display: "flex", gap: 8, alignItems: "flex-start", font: "var(--type-small)", color: "var(--text-faint)" }}><Icon name="map-pin" size={16} />{D.direccion}</span>
+          {/* Ruta en Google Maps desde la ubicación del visitante: sin origen,
+              Maps usa "tu ubicación". El destino sale de D.direccion, así que
+              editar la dirección en /admin también corrige el enlace. */}
+          <a href={"https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(D.direccion)} target="_blank" rel="noreferrer" title="Cómo llegar (Google Maps)"
+            style={{ display: "flex", gap: 8, alignItems: "flex-start", font: "var(--type-small)" }}><Icon name="map-pin" size={16} />{D.direccion}</a>
         </div>
       </div>
-      <div className="u-container" style={{ marginTop: "var(--sp-8)", paddingTop: "var(--sp-5)", borderTop: "1px solid var(--border-hair)", font: "var(--fw-regular) var(--fs-2xs)/1.5 var(--font-body)", color: "var(--text-faint)" }}>
-        911 S.A.S · Todos los derechos reservados
+      <div className="u-container" style={{ marginTop: "var(--sp-8)", paddingTop: "var(--sp-5)", borderTop: "1px solid var(--border-hair)", font: "var(--fw-regular) var(--fs-2xs)/1.5 var(--font-body)", color: "var(--text-faint)", display: "flex", justifyContent: "space-between", gap: "var(--sp-4)", flexWrap: "wrap" }}>
+        <span>911 Urban Salón · {new Date().getFullYear()}</span>
+        <span style={{ textTransform: "uppercase", letterSpacing: "var(--ls-widest)" }}>Ynt-labs</span>
       </div>
     </footer>
   );
