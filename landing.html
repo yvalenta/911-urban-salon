@@ -229,6 +229,9 @@ img{max-width:100%;display:block}
 
 /* ══ Página ══ */
 html{scroll-behavior:smooth}
+/* Sin paneo lateral: las entradas de AOS (fade-left/right) desplazan bloques
+   100px fuera del viewport y sin esto la página entera se puede arrastrar. */
+html, body{overflow-x:hidden;overflow-x:clip}
 [data-aos]{pointer-events:auto}
 
 
@@ -237,6 +240,8 @@ html{scroll-behavior:smooth}
    por selector de atributo en pantallas angostas. */
 @media (max-width: 960px){
   :root{ --fs-7xl:72px; --fs-6xl:52px; --fs-5xl:46px; --fs-4xl:38px; --section-y:72px; }
+  /* En móvil las entradas laterales de AOS solo funden (sin deslizar). */
+  [data-aos="fade-left"], [data-aos="fade-right"]{ transform: none !important; }
   div[style*="sticky"]{ position: static !important; }
   div[style*="repeat(4"]{ grid-template-columns: repeat(2, 1fr) !important; }
   div[style*="repeat(3"]{ grid-template-columns: 1fr !important; }
