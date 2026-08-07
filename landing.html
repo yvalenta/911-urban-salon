@@ -243,8 +243,13 @@ html{scroll-behavior:smooth}
   div[style*="1.15fr"], div[style*="1.55fr"], div[style*=".9fr"], div[style*=".8fr"],
   div[style*="1.2fr"], div[style*="grid-template-columns: 1fr 1fr"]{ grid-template-columns: 1fr !important; }
 }
+.c-snap{scrollbar-width:none}
+.c-snap::-webkit-scrollbar{display:none}
 @media (max-width: 640px){
-  :root{ --fs-7xl:56px; --fs-6xl:42px; --fs-5xl:38px; --fs-4xl:32px; --fs-3xl:26px; --fs-2xl:24px; --section-y:56px; --card-pad-lg:20px; --card-pad:18px; }
+  :root{ --fs-7xl:56px; --fs-6xl:42px; --fs-5xl:38px; --fs-4xl:32px; --fs-3xl:26px; --fs-2xl:24px; --section-y:56px; --card-pad-lg:20px; --card-pad:18px;
+         --ls-widest:0.10em; --ls-wider:0.06em; --lh-relaxed:1.7; }
+  section#top img{ display: none; }
+  section#top{ min-height: 0 !important; }
   header{ flex-wrap: wrap; gap: var(--sp-3) !important; }
   header nav{ display: none !important }
   div[style*="repeat(4"]{ grid-template-columns: 1fr !important; }
@@ -3698,12 +3703,52 @@ window.DATA_911 = {
 };
 
 </script>
-<!-- ══ Overrides del bundle: multiservicio + estados + horarios data-driven ══ -->
+<!-- ══ Overrides del bundle: multiservicio + móvil interactivo + estados + horarios ══ -->
 <script type="text/babel" data-presets="react">
 /* Reemplaza el TurnosAsistente del bundle: selector de servicio categorizado
    (cortes / spa / barbería) con chips más legibles: nombre grande, duración y precio. */
 (() => {
 const { SectionHeading, Card, Badge, Button, Icon, Input, OptionChip, StepIndicator, BarberCard, SlotPicker, QueueStatus, TurnoTicket } = window.Ds911UrbanSalNDesignSystem_1e06a9;
+
+/* Móvil: variantes compactas e interactivas (carruseles y acordeones). */
+function useMovil() {
+  const [m, setM] = React.useState(() => window.matchMedia("(max-width: 640px)").matches);
+  React.useEffect(() => {
+    const q = window.matchMedia("(max-width: 640px)");
+    const f = e => setM(e.matches);
+    q.addEventListener("change", f); return () => q.removeEventListener("change", f);
+  }, []);
+  return m;
+}
+
+/* Carrusel con scroll-snap: se desliza con el dedo, asoma la siguiente tarjeta. */
+function Carrusel({ children, ancho }) {
+  return (
+    <div className="c-snap" style={{ display: "flex", gap: "var(--sp-3)", overflowX: "auto", scrollSnapType: "x mandatory", scrollPadding: "var(--gutter)", margin: "0 calc(-1 * var(--gutter))", padding: "4px var(--gutter) 8px", WebkitOverflowScrolling: "touch" }}>
+      {React.Children.map(children, ch => <div style={{ flex: "0 0 " + (ancho || "76%"), scrollSnapAlign: "center", display: "grid" }}>{ch}</div>)}
+    </div>
+  );
+}
+
+function PistaDesliza() {
+  return <span style={{ font: "600 var(--fs-3xs)/1 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wider)", color: "var(--text-faint)", justifySelf: "end" }}>Desliza →</span>;
+}
+
+/* Plegable: acordeón compacto para listas largas en móvil. */
+function Plegable({ titulo, extra, abierto, children }) {
+  const [open, setOpen] = React.useState(!!abierto);
+  return (
+    <div style={{ border: "1px solid var(--border-hair)", borderRadius: "var(--radius-sm)", background: "var(--surface-card)", overflow: "hidden" }}>
+      <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open}
+        style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", display: "flex", width: "100%", alignItems: "center", gap: "var(--sp-3)", padding: "13px var(--sp-4)" }}>
+        {extra}
+        <span style={{ font: "700 var(--fs-sm)/1.25 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wide)", color: "var(--text-strong)", flex: 1 }}>{titulo}</span>
+        <span style={{ color: "var(--naranja-500)", flex: "0 0 auto", display: "grid" }}><Icon name={open ? "minus" : "plus"} size={16} /></span>
+      </button>
+      {open && <div style={{ padding: "0 var(--sp-4) var(--sp-4)" }}>{children}</div>}
+    </div>
+  );
+}
 
 const DIAS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
@@ -3746,6 +3791,7 @@ function ChipServicio({ s, selected, onClick }) {
 
 function TurnosAsistente({ servicioInicial }) {
   const D = window.DATA_911;
+  const movil = useMovil();
   const dias = React.useMemo(() => proximosDias(5), []);
   const grupos = [
     { titulo: "Cortes / motilados", icon: "scissors", cat: "cortes", items: D.cortes },
@@ -3943,15 +3989,18 @@ function TurnosAsistente({ servicioInicial }) {
 
           <div style={{ display: "grid", gap: "var(--sp-4)" }}>
             <QueueStatus enAtencion="A-014" esperaMin={25} enEspera={[{ codigo: "A-015", servicio: "Skin fade" }, { codigo: "A-016", servicio: "Barba" }, { codigo: "A-017", servicio: "Masaje facial" }]} />
-            <Card padding="var(--card-pad)" style={{ display: "grid", gap: "var(--sp-3)" }}>
-              <span className="u-kicker">Cómo funciona</span>
-              {[["zap", "El sistema busca el primer hueco libre del barbero que elijas."], ["layers", "¿Varios servicios? Se agendan seguidos en el mismo turno; solo un corte por visita."], ["ticket", "Te asigna un código de turno y te lo manda por WhatsApp."], ["clock", "Llega 5 minutos antes: el turno se libera a los 10."]].map(([ic, t]) => (
-                <div key={t} style={{ display: "flex", gap: "var(--sp-3)", alignItems: "flex-start" }}>
+            {(() => {
+              const items = [["zap", "El sistema busca el primer hueco libre del barbero que elijas."], ["layers", "¿Varios servicios? Se agendan seguidos en el mismo turno; solo un corte por visita."], ["ticket", "Te asigna un código de turno y te lo manda por WhatsApp."], ["clock", "Llega 5 minutos antes: el turno se libera a los 10."]];
+              const filas = items.map(([ic, t]) => (
+                <div key={t} style={{ display: "flex", gap: "var(--sp-3)", alignItems: "flex-start", marginTop: 10 }}>
                   <span style={{ color: "var(--naranja-500)", marginTop: 2 }}><Icon name={ic} size={16} /></span>
                   <span style={{ font: "var(--type-small)", color: "var(--text-muted)" }}>{t}</span>
                 </div>
-              ))}
-            </Card>
+              ));
+              return movil
+                ? <Plegable titulo="Cómo funciona" extra={<span style={{ color: "var(--naranja-500)", display: "grid" }}><Icon name="zap" size={16} /></span>}>{filas}</Plegable>
+                : <Card padding="var(--card-pad)" style={{ display: "grid", gap: "var(--sp-1)" }}><span className="u-kicker">Cómo funciona</span>{filas}</Card>;
+            })()}
           </div>
         </div>
       </div>
@@ -3962,11 +4011,25 @@ function TurnosAsistente({ servicioInicial }) {
 function Cortes({ onPedir }) {
   const D = window.DATA_911;
   const { SectionHeading, ServiceCard } = window.Ds911UrbanSalNDesignSystem_1e06a9;
+  const movil = useMovil();
   const visibles = D.cortes.filter(c => c.estado !== "borrador");
   return (
     <section id="cortes" style={{ paddingBlock: "var(--section-y)", background: "var(--negro-950)", borderBlock: "1px solid var(--border-hair)" }}>
       <div className="u-container" style={{ display: "grid", gap: "var(--sp-10)" }}>
         <SectionHeading kicker="Estilos de corte" title="Los cortes que dominamos" description="Cada uno con su tiempo real de silla, para que el turno que te asignamos sea el que de verdad necesitas." />
+        {movil && <PistaDesliza />}
+        {movil ? (
+          <Carrusel ancho="78%">
+            {visibles.map(c => {
+              const agotado = c.estado === "agotado";
+              return (
+                <div key={c.nombre} style={{ display: "grid", opacity: agotado ? .55 : 1, pointerEvents: agotado ? "none" : "auto" }}>
+                  <ServiceCard image={"assets/servicios/" + c.img + ".jpeg"} title={c.nombre} description={c.desc} price={c.precio} duration={c.dur} badge={agotado ? "No disponible" : c.badge} onClick={agotado ? undefined : () => onPedir(c.nombre)} />
+                </div>
+              );
+            })}
+          </Carrusel>
+        ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "var(--sp-4)" }}>
           {visibles.map((c, i) => {
             const agotado = c.estado === "agotado";
@@ -3977,6 +4040,7 @@ function Cortes({ onPedir }) {
             );
           })}
         </div>
+        )}
       </div>
     </section>
   );
@@ -3985,6 +4049,7 @@ function Cortes({ onPedir }) {
 function Spa() {
   const D = window.DATA_911;
   const { SectionHeading, Card, Badge, Icon } = window.Ds911UrbanSalNDesignSystem_1e06a9;
+  const movil = useMovil();
   const visibles = D.spa.filter(s => s.estado !== "borrador");
   return (
     <section id="spa" style={{ paddingBlock: "var(--section-y)" }}>
@@ -4012,6 +4077,18 @@ function Spa() {
             })}
           </div>
         </div>
+        {movil ? (
+          <Plegable titulo="Limpieza facial: los siete pasos" extra={<span style={{ color: "var(--azul-neon)", display: "grid" }}><Icon name="sparkles" size={18} /></span>}>
+            <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: "var(--sp-3)" }}>
+              {D.facial.map((p, i) => (
+                <li key={p} style={{ display: "flex", gap: "var(--sp-4)", alignItems: "center" }}>
+                  <span style={{ font: "400 var(--fs-lg)/1 var(--font-display)", color: "var(--azul-neon)", width: 28 }}>{String(i + 1).padStart(2, "0")}</span>
+                  <span style={{ font: "var(--type-small)", color: "var(--text-body)" }}>{p}</span>
+                </li>
+              ))}
+            </ol>
+          </Plegable>
+        ) : (
         <Card padding="var(--card-pad-lg)" accent="azul" data-aos="fade-left" style={{ display: "grid", gap: "var(--sp-5)" }}>
           <div style={{ display: "grid", gap: "var(--sp-2)" }}>
             <span className="u-kicker">Limpieza facial para hombres</span>
@@ -4026,6 +4103,7 @@ function Spa() {
             ))}
           </ol>
         </Card>
+        )}
       </div>
     </section>
   );
@@ -4033,12 +4111,13 @@ function Spa() {
 
 function Horarios() {
   const H = window.DATA_911.horario || {};
+  const movil = useMovil();
   const { SectionHeading, Card, Badge, Icon } = window.Ds911UrbanSalNDesignSystem_1e06a9;
   return (
     <section id="horarios" style={{ paddingBlock: "var(--section-y)", background: "var(--negro-950)", borderBlock: "1px solid var(--border-hair)" }}>
       <div className="u-container" style={{ display: "grid", gridTemplateColumns: ".9fr 1.1fr", gap: "var(--sp-12)", alignItems: "center" }}>
-        <div style={{ position: "relative", display: "grid", placeItems: "center", minHeight: 300 }} data-aos="fade-right">
-          <img src="assets/icon-barber-pole.png" alt="" style={{ height: 300, filter: "drop-shadow(0 0 40px rgba(46,155,240,.35))" }} />
+        <div style={{ position: "relative", display: "grid", placeItems: "center", minHeight: movil ? 0 : 300 }} data-aos="fade-right">
+          <img src="assets/icon-barber-pole.png" alt="" style={{ height: movil ? 150 : 300, filter: "drop-shadow(0 0 40px rgba(46,155,240,.35))" }} />
         </div>
         <div style={{ display: "grid", gap: "var(--sp-6)" }} data-aos="fade-left">
           <SectionHeading kicker="Horarios" title={H.dias || "De miércoles a lunes"} />
@@ -4088,7 +4167,88 @@ function Footer() {
   );
 }
 
-Object.assign(window, { TurnosAsistente, Cortes, Spa, Horarios, Footer });
+function Servicios() {
+  const D = window.DATA_911;
+  const { SectionHeading, Card, Icon } = window.Ds911UrbanSalNDesignSystem_1e06a9;
+  const movil = useMovil();
+  const tarjeta = (c, i, aos) => (
+    <Card key={c.titulo} interactive padding="var(--card-pad)" {...(aos ? { "data-aos": "fade-up", "data-aos-delay": i * 80 } : {})} style={{ display: "grid", gap: "var(--sp-3)", alignContent: "start" }}>
+      <span style={{ width: 44, height: 44, display: "grid", placeItems: "center", borderRadius: "var(--radius-sm)", background: "var(--surface-accent-soft)", color: "var(--naranja-500)" }}><Icon name={c.icon} size={22} /></span>
+      <h3 style={{ margin: 0, font: "700 var(--fs-lg)/1.1 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wide)", color: "var(--text-strong)" }}>{c.titulo}</h3>
+      <p style={{ margin: 0, font: "var(--type-small)", color: "var(--text-muted)" }}>{c.texto}</p>
+    </Card>
+  );
+  return (
+    <section id="servicios" style={{ paddingBlock: "var(--section-y)" }}>
+      <div className="u-container" style={{ display: "grid", gap: movil ? "var(--sp-5)" : "var(--sp-10)" }}>
+        <SectionHeading kicker="Carta" title="Cuatro frentes, un mismo estándar" description="Lo que hacemos en silla y lo que hacemos en camilla." align="center" />
+        {movil
+          ? <React.Fragment><PistaDesliza /><Carrusel ancho="70%">{D.categorias.map((c, i) => tarjeta(c, i, false))}</Carrusel></React.Fragment>
+          : <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "var(--sp-4)" }}>{D.categorias.map((c, i) => tarjeta(c, i, true))}</div>}
+      </div>
+    </section>
+  );
+}
+
+function ComoFunciona() {
+  const D = window.DATA_911;
+  const { SectionHeading, Card } = window.Ds911UrbanSalNDesignSystem_1e06a9;
+  const movil = useMovil();
+  return (
+    <section id="flujo" style={{ paddingBlock: "var(--section-y)", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", inset: 0, background: "url('assets/texture-graffiti-black.jpeg') center/cover", opacity: .18 }} />
+      <div className="u-container" style={{ position: "relative", display: "grid", gap: movil ? "var(--sp-5)" : "var(--sp-10)" }}>
+        <SectionHeading kicker="Flujograma de atención" title="Cómo te atendemos" description="El mismo recorrido para todos, desde que entras hasta que te vas." align="center" />
+        {movil ? (
+          <div style={{ display: "grid", gap: "var(--sp-2)" }}>
+            {D.flujo.map((p, i) => (
+              <Plegable key={p.n} abierto={i === 0} titulo={p.t}
+                extra={<span style={{ font: "400 var(--fs-2xl)/1 var(--font-display)", color: "var(--naranja-500)", width: 26, flex: "0 0 auto" }}>{p.n}</span>}>
+                <p style={{ margin: 0, font: "var(--type-small)", color: "var(--text-muted)" }}>{p.d}</p>
+              </Plegable>
+            ))}
+            <div style={{ textAlign: "center", paddingTop: "var(--sp-3)" }}>
+              <span style={{ fontFamily: "var(--font-tag)", fontSize: "var(--fs-lg)", color: "var(--naranja-500)", transform: "rotate(-3deg)", display: "inline-block" }}>¡Tu belleza, nuestra emergencia!</span>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "var(--sp-4)" }}>
+            {D.flujo.map((p, i) => (
+              <Card key={p.n} padding="var(--sp-5)" data-aos="fade-up" data-aos-delay={i * 60} style={{ display: "grid", gap: "var(--sp-2)", alignContent: "start" }}>
+                <span style={{ font: "400 var(--fs-4xl)/1 var(--font-display)", color: "var(--naranja-500)", opacity: .9 }}>{p.n}</span>
+                <h3 style={{ margin: 0, font: "700 var(--fs-base)/1.15 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wide)", color: "var(--text-strong)" }}>{p.t}</h3>
+                <p style={{ margin: 0, font: "var(--type-small)", color: "var(--text-muted)" }}>{p.d}</p>
+              </Card>
+            ))}
+            <Card padding="var(--sp-5)" accent="azul" selected style={{ display: "grid", gap: "var(--sp-2)", alignContent: "center" }}>
+              <span style={{ fontFamily: "var(--font-tag)", fontSize: "var(--fs-xl)", color: "var(--naranja-500)", transform: "rotate(-3deg)", display: "inline-block" }}>¡Tu belleza,<br />nuestra emergencia!</span>
+            </Card>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function Resenas() {
+  const D = window.DATA_911;
+  const { SectionHeading, ReviewCard } = window.Ds911UrbanSalNDesignSystem_1e06a9;
+  const movil = useMovil();
+  return (
+    <section style={{ paddingBlock: "var(--section-y)" }}>
+      <div className="u-container" style={{ display: "grid", gap: movil ? "var(--sp-5)" : "var(--sp-10)" }}>
+        <SectionHeading kicker="Lo que dicen" title="Reseñas de la silla" align="center" />
+        {movil
+          ? <React.Fragment><PistaDesliza /><Carrusel ancho="82%">{D.resenas.map(r => <ReviewCard key={r.a} quote={r.q} author={r.a} meta={r.m} />)}</Carrusel></React.Fragment>
+          : <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "var(--sp-4)" }}>
+              {D.resenas.map((r, i) => <div key={r.a} data-aos="fade-up" data-aos-delay={i * 80}><ReviewCard quote={r.q} author={r.a} meta={r.m} /></div>)}
+            </div>}
+      </div>
+    </section>
+  );
+}
+
+Object.assign(window, { TurnosAsistente, Servicios, Cortes, Spa, ComoFunciona, Resenas, Horarios, Footer });
 })();
 
 </script>
