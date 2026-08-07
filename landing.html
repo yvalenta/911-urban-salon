@@ -3697,7 +3697,7 @@ window.DATA_911 = {
 };
 
 </script>
-<!-- ══ Overrides del bundle: selector categorizado + horarios data-driven ══ -->
+<!-- ══ Overrides del bundle: selector categorizado + estados de servicio + horarios data-driven ══ -->
 <script type="text/babel" data-presets="react">
 /* Reemplaza el TurnosAsistente del bundle: selector de servicio categorizado
    (cortes / spa / barbería) con chips más legibles: nombre grande, duración y precio. */
@@ -3731,25 +3731,27 @@ function construirJornadas(fechaKey, barbero, esSpa) {
 }
 
 function ChipServicio({ s, selected, onClick }) {
-  return (
-    <OptionChip selected={selected} onClick={onClick}>
+  const agotado = s.estado === "agotado";
+  const chip = (
+    <OptionChip selected={selected} onClick={agotado ? undefined : onClick}>
       <span style={{ display: "grid", gap: 3, textAlign: "left", padding: "2px 0" }}>
         <span style={{ font: "700 var(--fs-sm)/1.1 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wide)" }}>{s.nombre}</span>
-        <span style={{ font: "500 var(--fs-3xs)/1.1 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wider)", opacity: .75 }}>{s.dur}{s.precio ? " · " + s.precio : ""}</span>
+        <span style={{ font: "500 var(--fs-3xs)/1.1 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wider)", opacity: .75 }}>{agotado ? "No disponible" : s.dur + (s.precio ? " · " + s.precio : "")}</span>
       </span>
     </OptionChip>
   );
+  return agotado ? <span aria-disabled="true" style={{ opacity: .45, pointerEvents: "none", display: "inline-flex" }}>{chip}</span> : chip;
 }
 
 function TurnosAsistente({ servicioInicial }) {
   const D = window.DATA_911;
   const dias = React.useMemo(() => proximosDias(5), []);
   const grupos = [
-    { titulo: "Cortes / motilados", icon: "scissors", items: D.cortes.map(c => ({ nombre: c.nombre, dur: c.dur, precio: c.precio, spa: false })) },
-    { titulo: "Spa y masajes", icon: "hand-heart", items: D.spa.map(s => ({ nombre: s.nombre, dur: s.dur, precio: s.precio, spa: true })) },
-    { titulo: "Barbería y otros", icon: "spray-can", items: (D.barberia || []).map(b => ({ nombre: b.nombre, dur: b.dur, precio: b.precio, spa: false })) }
-  ].filter(g => g.items.length);
-  const servicios = grupos.flatMap(g => g.items);
+    { titulo: "Cortes / motilados", icon: "scissors", items: D.cortes.map(c => ({ nombre: c.nombre, dur: c.dur, precio: c.precio, estado: c.estado, spa: false })) },
+    { titulo: "Spa y masajes", icon: "hand-heart", items: D.spa.map(s => ({ nombre: s.nombre, dur: s.dur, precio: s.precio, estado: s.estado, spa: true })) },
+    { titulo: "Barbería y otros", icon: "spray-can", items: (D.barberia || []).map(b => ({ nombre: b.nombre, dur: b.dur, precio: b.precio, estado: b.estado, spa: false })) }
+  ].map(g => ({ ...g, items: g.items.filter(s => s.estado !== "borrador") })).filter(g => g.items.length);
+  const servicios = grupos.flatMap(g => g.items).filter(s => s.estado !== "agotado");
 
   const [paso, setPaso] = React.useState(0);
   const [servicio, setServicio] = React.useState(null);
@@ -3905,6 +3907,78 @@ function TurnosAsistente({ servicioInicial }) {
 }
 
 
+function Cortes({ onPedir }) {
+  const D = window.DATA_911;
+  const { SectionHeading, ServiceCard } = window.Ds911UrbanSalNDesignSystem_1e06a9;
+  const visibles = D.cortes.filter(c => c.estado !== "borrador");
+  return (
+    <section id="cortes" style={{ paddingBlock: "var(--section-y)", background: "var(--negro-950)", borderBlock: "1px solid var(--border-hair)" }}>
+      <div className="u-container" style={{ display: "grid", gap: "var(--sp-10)" }}>
+        <SectionHeading kicker="Estilos de corte" title="Los cortes que dominamos" description="Cada uno con su tiempo real de silla, para que el turno que te asignamos sea el que de verdad necesitas." />
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "var(--sp-4)" }}>
+          {visibles.map((c, i) => {
+            const agotado = c.estado === "agotado";
+            return (
+              <div key={c.nombre} data-aos="fade-up" data-aos-delay={i * 80} style={{ display: "grid", opacity: agotado ? .55 : 1, pointerEvents: agotado ? "none" : "auto" }}>
+                <ServiceCard image={"assets/servicios/" + c.img + ".jpeg"} title={c.nombre} description={c.desc} price={c.precio} duration={c.dur} badge={agotado ? "No disponible" : c.badge} onClick={agotado ? undefined : () => onPedir(c.nombre)} />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Spa() {
+  const D = window.DATA_911;
+  const { SectionHeading, Card, Badge, Icon } = window.Ds911UrbanSalNDesignSystem_1e06a9;
+  const visibles = D.spa.filter(s => s.estado !== "borrador");
+  return (
+    <section id="spa" style={{ paddingBlock: "var(--section-y)" }}>
+      <div className="u-container" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--sp-12)", alignItems: "start" }}>
+        <div style={{ display: "grid", gap: "var(--sp-6)" }} data-aos="fade-right">
+          <SectionHeading kicker="Spa y masajes" title="Massoterapia" description="Conjunto de técnicas para tratamiento terapéutico, alivio de dolores, estrés y bienestar en general." tag="Bienestar es equilibrio" />
+          <div style={{ display: "grid", gap: "var(--sp-3)" }}>
+            {visibles.map(s => {
+              const agotado = s.estado === "agotado";
+              return (
+                <Card key={s.nombre} padding="var(--sp-4)" style={{ display: "flex", gap: "var(--sp-4)", alignItems: "center", opacity: agotado ? .55 : 1 }}>
+                  <span style={{ width: 40, height: 40, flex: "0 0 auto", display: "grid", placeItems: "center", borderRadius: "var(--radius-sm)", background: "var(--surface-blue-soft)", color: "var(--azul-neon)" }}><Icon name={s.icon} size={20} /></span>
+                  <div style={{ display: "grid", gap: 2, flex: 1 }}>
+                    <span style={{ font: "700 var(--fs-lg)/1 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wide)", color: "var(--text-strong)" }}>{s.nombre}</span>
+                    <span style={{ font: "var(--type-small)", color: "var(--text-muted)" }}>{s.desc}</span>
+                  </div>
+                  {agotado
+                    ? <Badge tone="ocupado">No disponible</Badge>
+                    : <div style={{ textAlign: "right" }}>
+                        <div style={{ font: "700 var(--fs-lg)/1 var(--font-condensed)", color: "var(--naranja-500)" }}>{s.precio}</div>
+                        <div style={{ font: "600 var(--fs-3xs)/1.6 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wider)", color: "var(--text-faint)" }}>{s.dur}</div>
+                      </div>}
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+        <Card padding="var(--card-pad-lg)" accent="azul" data-aos="fade-left" style={{ display: "grid", gap: "var(--sp-5)" }}>
+          <div style={{ display: "grid", gap: "var(--sp-2)" }}>
+            <span className="u-kicker">Limpieza facial para hombres</span>
+            <h3 style={{ margin: 0, font: "400 var(--fs-3xl)/1 var(--font-display)", textTransform: "uppercase", color: "var(--text-strong)" }}>Siete pasos</h3>
+          </div>
+          <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: "var(--sp-3)" }}>
+            {D.facial.map((p, i) => (
+              <li key={p} style={{ display: "flex", gap: "var(--sp-4)", alignItems: "center", paddingBottom: "var(--sp-3)", borderBottom: i < D.facial.length - 1 ? "1px solid var(--border-hair)" : "none" }}>
+                <span style={{ font: "400 var(--fs-xl)/1 var(--font-display)", color: "var(--azul-neon)", width: 30 }}>{String(i + 1).padStart(2, "0")}</span>
+                <span style={{ font: "var(--type-body)", color: "var(--text-body)" }}>{p}</span>
+              </li>
+            ))}
+          </ol>
+        </Card>
+      </div>
+    </section>
+  );
+}
+
 function Horarios() {
   const H = window.DATA_911.horario || {};
   const { SectionHeading, Card, Badge, Icon } = window.Ds911UrbanSalNDesignSystem_1e06a9;
@@ -3962,7 +4036,7 @@ function Footer() {
   );
 }
 
-Object.assign(window, { TurnosAsistente, Horarios, Footer });
+Object.assign(window, { TurnosAsistente, Cortes, Spa, Horarios, Footer });
 })();
 
 </script>

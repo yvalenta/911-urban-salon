@@ -3688,7 +3688,7 @@ window.DATA_911 = {
   ]
 };
 </script>
-<!-- ══ Panel administrativo: login + sala + cola + carta y horarios editables ══ -->
+<!-- ══ Panel administrativo: login + sala + cola + carta con estados y horarios editables ══ -->
 <script type="text/babel" data-presets="react">
 const { Card, Badge, Button, Icon, Input, StepIndicator, BarberCard, QueueStatus, TurnoTicket } = window.Ds911UrbanSalNDesignSystem_1e06a9;
 
@@ -3890,6 +3890,24 @@ function HorariosAdmin({ horario, guardar }) {
   );
 }
 
+/* Visibilidad de un servicio: visible → no disponible (visto al público,
+   sin reserva) → borrador (oculto al público). Clic sobre el estado lo cicla. */
+const ESTADOS_SERVICIO = {
+  disponible: { texto: "Visible", tone: "libre", siguiente: "agotado" },
+  agotado: { texto: "No disponible", tone: "turno", siguiente: "borrador" },
+  borrador: { texto: "Borrador", tone: "ocupado", siguiente: "disponible" }
+};
+
+function EstadoServicio({ estado, onCambiar }) {
+  const e = ESTADOS_SERVICIO[estado || "disponible"];
+  return (
+    <button type="button" onClick={onCambiar} title="Cambiar visibilidad al público"
+      style={{ all: "unset", cursor: "pointer", display: "inline-flex" }}>
+      <Badge tone={e.tone} dot>{e.texto}</Badge>
+    </button>
+  );
+}
+
 function ServiciosAdmin({ servicios, actualizar, agregar, eliminar }) {
   const [editando, setEditando] = React.useState(null);   // "cat:idx"
   const [agregando, setAgregando] = React.useState(null); // "cat"
@@ -3910,12 +3928,15 @@ function ServiciosAdmin({ servicios, actualizar, agregar, eliminar }) {
             {(servicios[cat.clave] || []).map((s, i) => editando === cat.clave + ":" + i ? (
               <FormServicio key={"e" + i} inicial={s} rotulo="Nombre" onGuardar={c => { actualizar(cat.clave, i, c); setEditando(null); }} onCancelar={() => setEditando(null)} />
             ) : (
-              <div key={s.nombre + i} style={{ display: "flex", alignItems: "center", gap: "var(--sp-3)", padding: "var(--sp-3)", background: "var(--surface-raised)", border: "1px solid var(--border-hair)", borderRadius: "var(--radius-sm)" }}>
-                <div style={{ display: "grid", gap: 1, flex: 1, minWidth: 0 }}>
+              <div key={s.nombre + i} style={{ display: "flex", alignItems: "center", gap: "var(--sp-3)", padding: "var(--sp-3)", background: "var(--surface-raised)", border: "1px " + (s.estado === "borrador" ? "dashed var(--border-soft)" : "solid var(--border-hair)"), borderRadius: "var(--radius-sm)", opacity: s.estado === "borrador" ? .55 : s.estado === "agotado" ? .8 : 1 }}>
+                <div style={{ display: "grid", gap: 3, flex: 1, minWidth: 0 }}>
                   <span style={{ font: "700 var(--fs-sm)/1.2 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wide)", color: "var(--text-strong)" }}>{s.nombre}</span>
-                  <span style={{ font: "var(--fw-regular) var(--fs-2xs)/1.4 var(--font-body)", color: "var(--text-faint)" }}>{s.dur}</span>
+                  <EstadoServicio estado={s.estado} onCambiar={() => actualizar(cat.clave, i, { estado: ESTADOS_SERVICIO[s.estado || "disponible"].siguiente })} />
                 </div>
-                <span style={{ font: "700 var(--fs-base)/1 var(--font-condensed)", color: "var(--naranja-500)" }}>{s.precio}</span>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ font: "700 var(--fs-base)/1 var(--font-condensed)", color: "var(--naranja-500)" }}>{s.precio}</div>
+                  <div style={{ font: "var(--fw-regular) var(--fs-2xs)/1.6 var(--font-body)", color: "var(--text-faint)" }}>{s.dur}</div>
+                </div>
                 <Button size="sm" variant="ghost" onClick={() => { setEditando(cat.clave + ":" + i); setAgregando(null); }} aria-label={"Editar " + s.nombre}><Icon name="pencil" size={14} /></Button>
                 <Button size="sm" variant="ghost" onClick={() => { if (window.confirm("¿Quitar \"" + s.nombre + "\" de la carta?")) eliminar(cat.clave, i); }} aria-label={"Eliminar " + s.nombre}><Icon name="trash-2" size={14} /></Button>
               </div>
@@ -4024,7 +4045,7 @@ function AdminTurnos() {
   });
   const guardarHorario = h => { setHorario(h); try { localStorage.setItem(CLAVE_HORARIO, JSON.stringify(h)); } catch (e) {} };
   const actualizarServicio = (cat, i, campos) => guardarServicios({ ...servicios, [cat]: servicios[cat].map((s, j) => j === i ? { ...s, ...campos } : s) });
-  const agregarServicio = (cat, item) => guardarServicios({ ...servicios, [cat]: [...servicios[cat], item] });
+  const agregarServicio = (cat, item) => guardarServicios({ ...servicios, [cat]: [...servicios[cat], { ...item, estado: "disponible" }] });
   const eliminarServicio = (cat, i) => guardarServicios({ ...servicios, [cat]: servicios[cat].filter((s, j) => j !== i) });
   React.useEffect(() => { if (window.lucide) window.lucide.createIcons({ nameAttr: "data-lucide" }); });
   const enSilla = cola.find(t => t.estado === "silla");
