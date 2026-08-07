@@ -231,6 +231,24 @@ img{max-width:100%;display:block}
 html{scroll-behavior:smooth}
 [data-aos]{pointer-events:auto}
 
+
+/* ══ Adaptación móvil ══
+   Los layouts del bundle usan estilos inline; estas reglas los colapsan
+   por selector de atributo en pantallas angostas. */
+@media (max-width: 960px){
+  :root{ --fs-7xl:72px; --fs-6xl:52px; --fs-5xl:46px; --fs-4xl:38px; --section-y:72px; }
+  div[style*="repeat(4"]{ grid-template-columns: repeat(2, 1fr) !important; }
+  div[style*="repeat(3"]{ grid-template-columns: 1fr !important; }
+  div[style*="1.15fr"], div[style*="1.55fr"], div[style*=".9fr"], div[style*=".8fr"],
+  div[style*="1.2fr"], div[style*="grid-template-columns: 1fr 1fr"]{ grid-template-columns: 1fr !important; }
+}
+@media (max-width: 640px){
+  :root{ --fs-7xl:56px; --fs-6xl:42px; --fs-5xl:38px; --fs-4xl:32px; --fs-3xl:26px; --fs-2xl:24px; --section-y:56px; --card-pad-lg:20px; --card-pad:18px; }
+  header{ flex-wrap: wrap; gap: var(--sp-3) !important; }
+  header nav{ display: none !important }
+  div[style*="repeat(4"]{ grid-template-columns: 1fr !important; }
+  div[style*="grid-template-columns: 1fr 1fr"]{ grid-template-columns: 1fr !important; }
+}
 </style>
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
@@ -3669,6 +3687,218 @@ window.DATA_911 = {
     { q: "¿Atienden mujeres y niños?", a: "Sí. La carta de cortes, faciales y masajes está abierta a todo público." }
   ]
 };
+
+</script>
+<!-- ══ Selector de servicio categorizado (reemplaza al del bundle) ══ -->
+<script type="text/babel" data-presets="react">
+/* Reemplaza el TurnosAsistente del bundle: selector de servicio categorizado
+   (cortes / spa / barbería) con chips más legibles: nombre grande, duración y precio. */
+(() => {
+const { SectionHeading, Card, Badge, Button, Icon, Input, OptionChip, StepIndicator, BarberCard, SlotPicker, QueueStatus, TurnoTicket } = window.Ds911UrbanSalNDesignSystem_1e06a9;
+
+const DIAS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+
+function proximosDias(n = 5) {
+  const out = []; const d = new Date();
+  while (out.length < n) {
+    if (d.getDay() !== 2) out.push({ key: d.toDateString(), etiqueta: DIAS[d.getDay()] + " " + d.getDate(), largo: DIAS[d.getDay()] + " " + d.getDate() + " " + MESES[d.getMonth()] });
+    d.setDate(d.getDate() + 1);
+  }
+  return out;
+}
+
+function hash(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
+function construirJornadas(fechaKey, barbero, esSpa) {
+  const gen = (desde, hasta, nombre, rango) => {
+    const slots = [];
+    for (let m = desde * 60; m < hasta * 60; m += 45) {
+      const hora = String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+      slots.push({ hora, tomado: hash(fechaKey + barbero + hora) % 10 < 3 });
+    }
+    return { nombre, rango, slots };
+  };
+  return esSpa
+    ? [gen(10, 17, "Jornada única", "10:00 a.m — 5:00 p.m")]
+    : [gen(9, 15, "1ra jornada", "9:00 a.m — 3:00 p.m"), gen(15, 21, "2da jornada", "3:00 p.m — 9:00 p.m")];
+}
+
+function ChipServicio({ s, selected, onClick }) {
+  return (
+    <OptionChip selected={selected} onClick={onClick}>
+      <span style={{ display: "grid", gap: 3, textAlign: "left", padding: "2px 0" }}>
+        <span style={{ font: "700 var(--fs-sm)/1.1 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wide)" }}>{s.nombre}</span>
+        <span style={{ font: "500 var(--fs-3xs)/1.1 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wider)", opacity: .75 }}>{s.dur}{s.precio ? " · " + s.precio : ""}</span>
+      </span>
+    </OptionChip>
+  );
+}
+
+function TurnosAsistente({ servicioInicial }) {
+  const D = window.DATA_911;
+  const dias = React.useMemo(() => proximosDias(5), []);
+  const grupos = [
+    { titulo: "Cortes / motilados", icon: "scissors", items: D.cortes.map(c => ({ nombre: c.nombre, dur: c.dur, precio: c.precio, spa: false })) },
+    { titulo: "Spa y masajes", icon: "hand-heart", items: D.spa.map(s => ({ nombre: s.nombre, dur: s.dur, precio: s.precio, spa: true })) },
+    { titulo: "Barbería y otros", icon: "spray-can", items: (D.barberia || []).map(b => ({ nombre: b.nombre, dur: b.dur, precio: b.precio, spa: false })) }
+  ].filter(g => g.items.length);
+  const servicios = grupos.flatMap(g => g.items);
+
+  const [paso, setPaso] = React.useState(0);
+  const [servicio, setServicio] = React.useState(null);
+  const [barbero, setBarbero] = React.useState(null);
+  const [dia, setDia] = React.useState(dias[0].key);
+  const [hora, setHora] = React.useState(null);
+  const [nombre, setNombre] = React.useState("");
+  const [tel, setTel] = React.useState("");
+  const [turno, setTurno] = React.useState(null);
+  const [auto, setAuto] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!servicioInicial) return;
+    const s = servicios.find(x => x.nombre === servicioInicial);
+    if (s) { setServicio(s); setPaso(1); setBarbero(null); setHora(null); }
+  }, [servicioInicial]);
+
+  const esSpa = servicio ? servicio.spa : false;
+  const equipo = D.equipo.filter(p => (p.rol.toLowerCase().includes("masajista") ? esSpa : !esSpa));
+  const jornadas = React.useMemo(() => construirJornadas(dia, barbero || "", esSpa), [dia, barbero, esSpa]);
+
+  function asignarAutomatico() {
+    const s = servicio || servicios[0];
+    const libres = D.equipo.filter(p => (p.rol.toLowerCase().includes("masajista") ? s.spa : !s.spa) && p.estado !== "ocupado");
+    const cand = libres[0] || D.equipo[0];
+    const js = construirJornadas(dias[0].key, cand.nombre, s.spa);
+    let primera = null;
+    for (const j of js) { const libre = j.slots.find(x => !x.tomado); if (libre) { primera = libre.hora; break; } }
+    setServicio(s); setBarbero(cand.nombre); setDia(dias[0].key); setHora(primera); setAuto(true); setPaso(3);
+  }
+
+  function confirmar() {
+    const codigo = "A-" + String(10 + Math.floor(Math.random() * 80));
+    const d = dias.find(x => x.key === dia);
+    setTurno({ codigo, servicio: servicio.nombre, barbero, fecha: d.largo, hora, posicion: 3 });
+    setPaso(4);
+  }
+
+  const pasos = ["Servicio", "Barbero", "Hora", "Datos"];
+  const puedeSeguir = [!!servicio, !!barbero, !!hora, nombre.trim().length > 1 && tel.trim().length > 6][paso];
+
+  return (
+    <section id="turnos" style={{ paddingBlock: "var(--section-y)", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(900px 420px at 78% 12%, rgba(15,107,180,.20), transparent 68%)" }} />
+      <div className="u-container" style={{ position: "relative", display: "grid", gap: "var(--sp-10)" }}>
+        <SectionHeading kicker="Asignación automática de turnos" title="Pide tu turno en 30 segundos" description="Dinos qué necesitas y el sistema te da el hueco más cercano con el barbero libre. Si prefieres, elígelo tú paso a paso." align="center" />
+
+        <div style={{ display: "grid", gridTemplateColumns: "1.55fr 1fr", gap: "var(--sp-6)", alignItems: "start" }}>
+          <Card padding="var(--card-pad-lg)" accent="azul" style={{ display: "grid", gap: "var(--sp-6)", minHeight: 470, alignContent: "start" }}>
+            {paso < 4 && (
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "var(--sp-4)", flexWrap: "wrap" }}>
+                <StepIndicator steps={pasos} current={paso} />
+                <Button size="sm" variant="ghost" onClick={asignarAutomatico} iconLeft={<Icon name="zap" size={15} />}>Asignar por mí</Button>
+              </div>
+            )}
+
+            {paso === 0 && (
+              <div style={{ display: "grid", gap: "var(--sp-5)" }}>
+                <span style={{ font: "600 var(--fs-2xs)/1 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wider)", color: "var(--text-muted)" }}>¿Qué te vas a hacer?</span>
+                {grupos.map(g => (
+                  <div key={g.titulo} style={{ display: "grid", gap: "var(--sp-3)" }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 8, font: "700 var(--fs-xs)/1 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wider)", color: "var(--naranja-500)" }}>
+                      <Icon name={g.icon} size={15} />{g.titulo}
+                      <span style={{ flex: 1, height: 1, background: "var(--border-hair)" }} />
+                    </span>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--sp-2)" }}>
+                      {g.items.map(s => (
+                        <ChipServicio key={s.nombre} s={s} selected={servicio && servicio.nombre === s.nombre} onClick={() => { setServicio(s); setBarbero(null); setHora(null); }} />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {paso === 1 && (
+              <div style={{ display: "grid", gap: "var(--sp-3)" }}>
+                <span style={{ font: "600 var(--fs-2xs)/1 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wider)", color: "var(--text-muted)" }}>¿Con quién?</span>
+                {equipo.map(p => (
+                  <BarberCard key={p.nombre} name={p.nombre} role={p.rol} estado={p.estado} nextSlot={p.proximo} specialty={p.especialidad}
+                    selected={barbero === p.nombre} onClick={() => { if (p.estado !== "ocupado") { setBarbero(p.nombre); setHora(null); } }} />
+                ))}
+              </div>
+            )}
+
+            {paso === 2 && (
+              <div style={{ display: "grid", gap: "var(--sp-5)" }}>
+                <div style={{ display: "grid", gap: "var(--sp-3)" }}>
+                  <span style={{ font: "600 var(--fs-2xs)/1 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wider)", color: "var(--text-muted)" }}>Día</span>
+                  <div style={{ display: "flex", gap: "var(--sp-2)", flexWrap: "wrap" }}>
+                    {dias.map(d => <OptionChip key={d.key} accent="azul" selected={dia === d.key} onClick={() => { setDia(d.key); setHora(null); }}>{d.etiqueta}</OptionChip>)}
+                  </div>
+                </div>
+                <SlotPicker jornadas={jornadas} value={hora} onChange={setHora} />
+              </div>
+            )}
+
+            {paso === 3 && (
+              <div style={{ display: "grid", gap: "var(--sp-4)" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--sp-4)" }}>
+                  <Input label="Tu nombre" placeholder="Como te llaman" value={nombre} onChange={e => setNombre(e.target.value)} icon={<Icon name="user-round" size={16} />} />
+                  <Input label="WhatsApp" placeholder="300 000 0000" value={tel} onChange={e => setTel(e.target.value)} icon={<Icon name="phone" size={16} />} hint="Ahí te llega la confirmación" />
+                </div>
+                {auto && <Badge tone="azul" dot>Turno asignado automáticamente: el hueco más cercano</Badge>}
+                <div style={{ display: "grid", gap: "var(--sp-2)", background: "var(--surface-raised)", border: "1px solid var(--border-hair)", borderRadius: "var(--radius-sm)", padding: "var(--sp-4)" }}>
+                  {[["Servicio", servicio && servicio.nombre], ["Precio", servicio && servicio.precio], ["Barbero", barbero], ["Día", (dias.find(d => d.key === dia) || {}).largo], ["Hora", hora]].map(([k, v]) => (
+                    <div key={k} style={{ display: "flex", justifyContent: "space-between", gap: "var(--sp-4)" }}>
+                      <span style={{ font: "600 var(--fs-2xs)/1.5 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wider)", color: "var(--text-faint)" }}>{k}</span>
+                      <span style={{ font: "700 var(--fs-sm)/1.5 var(--font-condensed)", textTransform: "uppercase", color: "var(--text-strong)" }}>{v || "—"}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {paso === 4 && turno && (
+              <div style={{ display: "grid", gap: "var(--sp-5)", justifyItems: "center", textAlign: "center" }}>
+                <Badge tone="libre" dot>Turno confirmado</Badge>
+                <TurnoTicket {...turno} />
+                <div style={{ display: "flex", gap: "var(--sp-3)", flexWrap: "wrap", justifyContent: "center" }}>
+                  <Button variant="secondary" as="a" href={"https://wa.me/" + D.telefono} iconLeft={<Icon name="message-circle" size={16} />}>Enviar por WhatsApp</Button>
+                  <Button variant="ghost" onClick={() => { setPaso(0); setTurno(null); setServicio(null); setBarbero(null); setHora(null); setAuto(false); }}>Pedir otro</Button>
+                </div>
+              </div>
+            )}
+
+            {paso < 4 && (
+              <div style={{ display: "flex", gap: "var(--sp-3)", marginTop: "auto", paddingTop: "var(--sp-2)" }}>
+                {paso > 0 && <Button variant="outline" onClick={() => setPaso(p => p - 1)}>Atrás</Button>}
+                {paso < 3
+                  ? <Button disabled={!puedeSeguir} onClick={() => setPaso(p => p + 1)} iconRight={<Icon name="arrow-right" size={16} />}>Continuar</Button>
+                  : <Button disabled={!puedeSeguir} onClick={confirmar} iconRight={<Icon name="check" size={16} />}>Confirmar turno</Button>}
+              </div>
+            )}
+          </Card>
+
+          <div style={{ display: "grid", gap: "var(--sp-4)" }}>
+            <QueueStatus enAtencion="A-014" esperaMin={25} enEspera={[{ codigo: "A-015", servicio: "Skin fade" }, { codigo: "A-016", servicio: "Barba" }, { codigo: "A-017", servicio: "Masaje facial" }]} />
+            <Card padding="var(--card-pad)" style={{ display: "grid", gap: "var(--sp-3)" }}>
+              <span className="u-kicker">Cómo funciona</span>
+              {[["zap", "El sistema busca el primer hueco libre del barbero que elijas."], ["ticket", "Te asigna un código de turno y te lo manda por WhatsApp."], ["clock", "Llega 5 minutos antes: el turno se libera a los 10."]].map(([ic, t]) => (
+                <div key={t} style={{ display: "flex", gap: "var(--sp-3)", alignItems: "flex-start" }}>
+                  <span style={{ color: "var(--naranja-500)", marginTop: 2 }}><Icon name={ic} size={16} /></span>
+                  <span style={{ font: "var(--type-small)", color: "var(--text-muted)" }}>{t}</span>
+                </div>
+              ))}
+            </Card>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+Object.assign(window, { TurnosAsistente });
+})();
 
 </script>
 <!-- ══ Montaje ══ -->
