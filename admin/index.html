@@ -1,0 +1,4005 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>911 Urban Salón — Administración de turnos</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0A0A0B">
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Anton&family=Barlow:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,600&family=Barlow+Condensed:wght@400;500;600;700&family=Permanent+Marker&display=swap");
+/* ══ 911 Urban Salón — tokens: colores ══
+   Every base value below was sampled from the brand artwork in assets/source/
+   (logo, flujograma, horarios, background collage). Do not invent new hues. */
+:root{
+  /* ── Naranja · el color del graffiti (acción principal) ── */
+  --naranja-50:#FEF1E6; --naranja-100:#FDDEC4; --naranja-200:#FABF92;
+  --naranja-300:#F8A96B; --naranja-400:#F49048; --naranja-500:#F07A28;
+  --naranja-600:#D6631A; --naranja-700:#A94B10; --naranja-800:#7A350A;
+  --naranja-900:#4A1F05;
+
+  /* ── Azul · el azul del logo y del poste de barbero (secundario) ── */
+  --azul-50:#E7F2FA; --azul-100:#C7E1F4; --azul-200:#8FC2E7;
+  --azul-300:#5FA8DE; --azul-400:#2E8ACC; --azul-500:#0F6BB4;
+  --azul-600:#0A548F; --azul-700:#073A64; --azul-800:#052842;
+  --azul-900:#031A2C;
+  --azul-neon:#2E9BF0;      /* resplandor de neón del flyer de horarios */
+
+  /* ── Negro · asfalto, papel quemado, muro ── */
+  --negro-950:#050506; --negro-900:#0A0A0B; --negro-800:#131316;
+  --negro-700:#1C1C21; --negro-600:#2A2A31; --negro-500:#3B3B44;
+  --gris-400:#6E6E78; --gris-300:#8A8A94; --gris-200:#B9B9C2;
+  --gris-100:#DEDEE3; --blanco:#F7F5F2;     /* blanco papel arrugado, cálido */
+
+  /* ── Rojo 911 · poste de barbero, urgencia ── */
+  --rojo-500:#D01F26; --rojo-600:#A81319; --rojo-100:#F9D6D7;
+  /* ── Verde · confirmación del flujograma ("SÍ") ── */
+  --verde-500:#2C8A52; --verde-600:#1E6B3D; --verde-100:#D3EEDD;
+  /* ── Ámbar · espera / turno en curso ── */
+  --ambar-500:#E8A31C; --ambar-100:#FBEBC6;
+
+  /* ═══ Alias semánticos — usa SIEMPRE estos en componentes ═══ */
+  --surface-page:var(--negro-900);
+  --surface-card:var(--negro-800);
+  --surface-raised:var(--negro-700);
+  --surface-sunken:var(--negro-950);
+  --surface-invert:var(--blanco);
+  --surface-accent:var(--naranja-500);
+  --surface-accent-soft:rgba(240,122,40,.12);
+  --surface-blue-soft:rgba(15,107,180,.16);
+
+  --text-strong:var(--blanco);
+  --text-body:var(--gris-200);
+  --text-muted:var(--gris-300);
+  --text-faint:var(--gris-400);
+  --text-accent:var(--naranja-500);
+  --text-on-accent:var(--negro-950);   /* naranja es claro: texto negro */
+  --text-on-blue:var(--blanco);
+  --text-on-invert:var(--negro-900);
+
+  --border-hair:rgba(247,245,242,.10);
+  --border-soft:rgba(247,245,242,.18);
+  --border-strong:rgba(247,245,242,.32);
+  --border-accent:var(--naranja-500);
+  --border-blue:var(--azul-500);
+
+  --action-primary:var(--naranja-500);
+  --action-primary-hover:var(--naranja-400);
+  --action-primary-press:var(--naranja-600);
+  --action-secondary:var(--azul-500);
+  --action-secondary-hover:var(--azul-400);
+  --action-secondary-press:var(--azul-600);
+  --action-disabled:var(--negro-600);
+
+  --status-libre:var(--verde-500);      /* barbero disponible */
+  --status-turno:var(--ambar-500);      /* en atención / en espera */
+  --status-ocupado:var(--rojo-500);     /* sin cupo */
+  --status-info:var(--azul-neon);
+
+  --focus-ring:var(--azul-neon);
+}
+
+/* Zona clara: secciones sobre papel blanco arrugado (flyers "bienvenido"). */
+[data-tema="papel"]{
+  --surface-page:var(--blanco);
+  --surface-card:#FFFFFF;
+  --surface-raised:#FFFFFF;
+  --surface-sunken:#ECE9E4;
+  --surface-invert:var(--negro-900);
+  --text-strong:var(--negro-900);
+  --text-body:#3A3A42;
+  --text-muted:#63636D;
+  --text-faint:var(--gris-400);
+  --text-on-invert:var(--blanco);
+  --border-hair:rgba(10,10,11,.10);
+  --border-soft:rgba(10,10,11,.16);
+  --border-strong:rgba(10,10,11,.30);
+}
+
+/* ══ Tokens: tipografía ══ */
+:root{
+  --font-display:"Anton","Barlow Condensed",Impact,sans-serif;   /* titulares póster */
+  --font-condensed:"Barlow Condensed",sans-serif;                /* etiquetas, datos, botones */
+  --font-body:"Barlow",system-ui,sans-serif;                     /* párrafos */
+  --font-tag:"Permanent Marker",cursive;                         /* firmas de marcador, uso escaso */
+  --font-mono:ui-monospace,"SFMono-Regular",Menlo,monospace;     /* códigos de turno */
+
+  /* Escala tipo póster: salta fuerte entre niveles, sin pasos tímidos. */
+  --fs-3xs:11px; --fs-2xs:12px; --fs-xs:13px; --fs-sm:15px; --fs-base:17px;
+  --fs-lg:19px; --fs-xl:22px; --fs-2xl:28px; --fs-3xl:36px; --fs-4xl:48px;
+  --fs-5xl:64px; --fs-6xl:84px; --fs-7xl:112px;
+
+  --lh-tight:0.92;
+  --lh-snug:1.15;
+  --lh-normal:1.5;
+  --lh-relaxed:1.65;
+
+  --ls-tight:-0.02em;
+  --ls-normal:0;
+  --ls-wide:0.04em;
+  --ls-wider:0.10em;
+  --ls-widest:0.18em;
+
+  --fw-light:300;
+  --fw-regular:400;
+  --fw-medium:500;
+  --fw-semibold:600;
+  --fw-bold:700;
+
+  /* Roles */
+  --type-hero:var(--fw-regular) var(--fs-7xl)/var(--lh-tight) var(--font-display);
+  --type-display:var(--fw-regular) var(--fs-5xl)/var(--lh-tight) var(--font-display);
+  --type-section:var(--fw-regular) var(--fs-4xl)/var(--lh-tight) var(--font-display);
+  --type-title:var(--fw-bold) var(--fs-2xl)/var(--lh-snug) var(--font-condensed);
+  --type-label:var(--fw-600,600) var(--fs-xs)/1.2 var(--font-condensed);
+  --type-body:var(--fw-regular) var(--fs-base)/var(--lh-relaxed) var(--font-body);
+  --type-small:var(--fw-regular) var(--fs-sm)/var(--lh-normal) var(--font-body);
+}
+
+/* ══ Tokens: espaciado y medidas. Base 4px. ══ */
+:root{
+  --sp-0:0; --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px;
+  --sp-6:24px; --sp-8:32px; --sp-10:40px; --sp-12:48px; --sp-16:64px;
+  --sp-20:80px; --sp-24:96px; --sp-32:128px;
+
+  --section-y:96px;        /* respiro vertical entre secciones de landing */
+  --section-y-tight:64px;
+  --gutter:24px;           /* margen lateral en móvil */
+  --container:1200px;      /* ancho máximo de contenido */
+  --container-narrow:760px;/* columnas de lectura */
+
+  --card-pad:24px;
+  --card-pad-lg:32px;
+  --control-h:48px;        /* alto de botones e inputs */
+  --control-h-sm:38px;
+  --control-h-lg:56px;
+  --tap-min:48px;          /* área táctil mínima */
+}
+
+/* ══ Tokens: radios, bordes, sombras, desenfoque y movimiento ══ */
+:root{
+  /* Radios: la marca es de esténcil y cartel — esquinas casi rectas.
+     Nada supera 16px salvo píldoras y avatares. */
+  --radius-none:0;
+  --radius-xs:2px;
+  --radius-sm:4px;     /* botones, chips, inputs */
+  --radius-md:10px;    /* tarjetas */
+  --radius-lg:16px;    /* paneles grandes, modales */
+  --radius-pill:999px; /* badges, avatares */
+
+  --border-w:1px;
+  --border-w-thick:2px;
+  --border-w-stencil:3px;
+
+  /* Sombras: negro profundo, nunca sombras de color salvo el glow de acento. */
+  --shadow-xs:0 1px 2px rgba(0,0,0,.4);
+  --shadow-sm:0 2px 8px rgba(0,0,0,.45);
+  --shadow-md:0 8px 24px rgba(0,0,0,.5);
+  --shadow-lg:0 20px 48px rgba(0,0,0,.6);
+  --shadow-inset:inset 0 1px 0 rgba(247,245,242,.06);
+  --glow-naranja:0 0 0 1px rgba(240,122,40,.5),0 8px 28px rgba(240,122,40,.28);
+  --glow-azul:0 0 0 1px rgba(46,155,240,.5),0 8px 28px rgba(46,155,240,.30);
+  --glow-neon:0 0 12px rgba(46,155,240,.85),0 0 32px rgba(46,155,240,.45);
+
+  /* Desenfoque: solo en capas flotantes sobre foto o textura. */
+  --blur-sm:6px;
+  --blur-md:14px;
+  --blur-lg:28px;
+  --scrim-top:linear-gradient(to bottom,rgba(5,5,6,.92),rgba(5,5,6,0));
+  --scrim-bottom:linear-gradient(to top,rgba(5,5,6,.95),rgba(5,5,6,.35) 45%,rgba(5,5,6,0));
+
+  /* Movimiento */
+  --dur-instant:90ms;
+  --dur-fast:180ms;
+  --dur-base:280ms;
+  --dur-slow:520ms;
+  --ease-out:cubic-bezier(.16,1,.3,1);
+  --ease-in-out:cubic-bezier(.65,0,.35,1);
+  --ease-snap:cubic-bezier(.34,1.4,.5,1);
+  --lift:translateY(-3px);
+  --press:translateY(1px) scale(.985);
+}
+@media (prefers-reduced-motion:reduce){
+  :root{
+    --dur-fast:0ms;
+    --dur-base:0ms;
+    --dur-slow:0ms;
+    --lift:none;
+  }
+}
+
+/* ══ Reset mínimo y utilidades de marca ══ */
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--surface-page);color:var(--text-body);font:var(--type-body);-webkit-font-smoothing:antialiased;text-wrap:pretty}
+h1,h2,h3,h4{margin:0;color:var(--text-strong)}
+h1,h2{font-family:var(--font-display);font-weight:400;line-height:var(--lh-tight);text-transform:uppercase}
+h3,h4{font-family:var(--font-condensed);font-weight:700;line-height:var(--lh-snug);text-transform:uppercase;letter-spacing:var(--ls-wide)}
+p{margin:0 0 var(--sp-4)}
+a{color:var(--text-accent);text-decoration:none;transition:color var(--dur-fast) var(--ease-out)}
+a:hover{color:var(--naranja-300)}
+:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+img{max-width:100%;display:block}
+
+/* Kicker / overline: la etiqueta condensada que precede a cada titular. */
+.u-kicker{font:600 var(--fs-2xs)/1 var(--font-condensed);text-transform:uppercase;letter-spacing:var(--ls-widest);color:var(--naranja-500)}
+/* Firma de marcador — máximo una por pantalla. */
+.u-tag{font-family:var(--font-tag);color:var(--naranja-500);transform:rotate(-3deg);display:inline-block}
+/* Barra de acento bajo un titular. */
+.u-rule{width:64px;height:4px;background:var(--naranja-500);border:0}
+/* Textura de muro: se aplica al fondo de página, nunca dentro de tarjetas. */
+.u-wall{background-image:url("/assets/texture-graffiti-black.jpeg");background-size:cover;background-position:center}
+.u-wall-dim::after{content:"";position:absolute;inset:0;background:rgba(5,5,6,.82)}
+.u-container{width:100%;max-width:var(--container);margin-inline:auto;padding-inline:var(--gutter)}
+
+/* ══ Página ══ */
+html{scroll-behavior:smooth}
+[data-aos]{pointer-events:auto}
+
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/lucide@0.454.0/dist/umd/lucide.min.js"></script>
+</head><body><div id="root"></div>
+<!-- ══ Design system 911 Urban Salón (componentes precompilados) ══ -->
+<script>
+/* @ds-bundle: {"format":4,"namespace":"Ds911UrbanSalNDesignSystem_1e06a9","components":[{"name":"Badge","sourcePath":"components/core/Badge.jsx"},{"name":"Button","sourcePath":"components/core/Button.jsx"},{"name":"Card","sourcePath":"components/core/Card.jsx"},{"name":"Icon","sourcePath":"components/core/Icon.jsx"},{"name":"SectionHeading","sourcePath":"components/core/SectionHeading.jsx"},{"name":"Input","sourcePath":"components/forms/Input.jsx"},{"name":"OptionChip","sourcePath":"components/forms/OptionChip.jsx"},{"name":"Select","sourcePath":"components/forms/Select.jsx"},{"name":"FaqItem","sourcePath":"components/marketing/FaqItem.jsx"},{"name":"PriceCard","sourcePath":"components/marketing/PriceCard.jsx"},{"name":"ReviewCard","sourcePath":"components/marketing/ReviewCard.jsx"},{"name":"ServiceCard","sourcePath":"components/marketing/ServiceCard.jsx"},{"name":"StatBlock","sourcePath":"components/marketing/StatBlock.jsx"},{"name":"BarberCard","sourcePath":"components/turnos/BarberCard.jsx"},{"name":"QueueStatus","sourcePath":"components/turnos/QueueStatus.jsx"},{"name":"SlotPicker","sourcePath":"components/turnos/SlotPicker.jsx"},{"name":"StepIndicator","sourcePath":"components/turnos/StepIndicator.jsx"},{"name":"TurnoTicket","sourcePath":"components/turnos/TurnoTicket.jsx"}],"sourceHashes":{"components/core/Badge.jsx":"3ad4ff86af53","components/core/Button.jsx":"02bf693f6d65","components/core/Card.jsx":"c670fb557105","components/core/Icon.jsx":"8d42499ddf87","components/core/SectionHeading.jsx":"87f752b42591","components/forms/Input.jsx":"714fdfbb1a35","components/forms/OptionChip.jsx":"54491585ce40","components/forms/Select.jsx":"52c347c53488","components/marketing/FaqItem.jsx":"76334f7c6f37","components/marketing/PriceCard.jsx":"2c5fef3bc8f5","components/marketing/ReviewCard.jsx":"5646123c0959","components/marketing/ServiceCard.jsx":"7cd9e3bdbb17","components/marketing/StatBlock.jsx":"c1246d278870","components/turnos/BarberCard.jsx":"853d9dae2b72","components/turnos/QueueStatus.jsx":"1ae91ce29a94","components/turnos/SlotPicker.jsx":"563687391f2f","components/turnos/StepIndicator.jsx":"ce6694daade1","components/turnos/TurnoTicket.jsx":"3e6ed42b25d2","ui_kits/landing/Chrome.jsx":"f6d0b4fc64b1","ui_kits/landing/Secciones.jsx":"1a9463205e9c","ui_kits/landing/Turnos.jsx":"b32fc26faf62","ui_kits/landing/datos.js":"33f8d04bcd4e","ui_kits/turnos/Panel.jsx":"b7f85fd0d4c6"},"inlinedExternals":[],"unexposedExports":[]} */
+
+(() => {
+
+const __ds_ns = (window.Ds911UrbanSalNDesignSystem_1e06a9 = window.Ds911UrbanSalNDesignSystem_1e06a9 || {});
+
+const __ds_scope = {};
+
+(__ds_ns.__errors = __ds_ns.__errors || []);
+
+// components/core/Badge.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+const TONES = {
+  naranja: {
+    bg: "var(--surface-accent-soft)",
+    fg: "var(--naranja-300)",
+    bd: "rgba(240,122,40,.45)"
+  },
+  azul: {
+    bg: "var(--surface-blue-soft)",
+    fg: "var(--azul-300)",
+    bd: "rgba(46,155,240,.45)"
+  },
+  libre: {
+    bg: "rgba(44,138,82,.16)",
+    fg: "#6FD79B",
+    bd: "rgba(44,138,82,.5)"
+  },
+  turno: {
+    bg: "rgba(232,163,28,.16)",
+    fg: "#F3C766",
+    bd: "rgba(232,163,28,.5)"
+  },
+  ocupado: {
+    bg: "rgba(208,31,38,.16)",
+    fg: "#F08B8F",
+    bd: "rgba(208,31,38,.5)"
+  },
+  neutro: {
+    bg: "rgba(247,245,242,.07)",
+    fg: "var(--text-muted)",
+    bd: "var(--border-hair)"
+  },
+  solido: {
+    bg: "var(--naranja-500)",
+    fg: "var(--text-on-accent)",
+    bd: "var(--naranja-500)"
+  }
+};
+function Badge({
+  children,
+  tone = "neutro",
+  dot = false,
+  style,
+  ...rest
+}) {
+  const t = TONES[tone] || TONES.neutro;
+  return /*#__PURE__*/React.createElement("span", _extends({}, rest, {
+    style: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 6,
+      background: t.bg,
+      color: t.fg,
+      border: `1px solid ${t.bd}`,
+      borderRadius: "var(--radius-pill)",
+      padding: "4px 10px",
+      font: "700 var(--fs-3xs)/1 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wider)",
+      ...style
+    }
+  }), dot && /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 6,
+      height: 6,
+      borderRadius: "50%",
+      background: "currentColor",
+      boxShadow: "0 0 8px currentColor"
+    }
+  }), children);
+}
+Object.assign(__ds_scope, { Badge });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/core/Badge.jsx", error: String((e && e.message) || e) }); }
+
+// components/core/Button.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+const SIZES = {
+  sm: {
+    height: "var(--control-h-sm)",
+    padding: "0 16px",
+    fontSize: "var(--fs-2xs)"
+  },
+  md: {
+    height: "var(--control-h)",
+    padding: "0 24px",
+    fontSize: "var(--fs-sm)"
+  },
+  lg: {
+    height: "var(--control-h-lg)",
+    padding: "0 34px",
+    fontSize: "var(--fs-lg)"
+  }
+};
+const VARIANTS = {
+  primary: {
+    background: "var(--action-primary)",
+    color: "var(--text-on-accent)",
+    border: "1px solid var(--action-primary)"
+  },
+  secondary: {
+    background: "var(--action-secondary)",
+    color: "var(--text-on-blue)",
+    border: "1px solid var(--action-secondary)"
+  },
+  outline: {
+    background: "transparent",
+    color: "var(--text-strong)",
+    border: "1px solid var(--border-strong)"
+  },
+  ghost: {
+    background: "transparent",
+    color: "var(--text-body)",
+    border: "1px solid transparent"
+  },
+  danger: {
+    background: "var(--rojo-500)",
+    color: "var(--blanco)",
+    border: "1px solid var(--rojo-500)"
+  }
+};
+const HOVER = {
+  primary: {
+    background: "var(--action-primary-hover)",
+    borderColor: "var(--action-primary-hover)",
+    boxShadow: "var(--glow-naranja)"
+  },
+  secondary: {
+    background: "var(--action-secondary-hover)",
+    borderColor: "var(--action-secondary-hover)",
+    boxShadow: "var(--glow-azul)"
+  },
+  outline: {
+    borderColor: "var(--border-accent)",
+    color: "var(--naranja-500)"
+  },
+  ghost: {
+    color: "var(--text-strong)",
+    background: "rgba(247,245,242,.06)"
+  },
+  danger: {
+    background: "var(--rojo-600)",
+    borderColor: "var(--rojo-600)"
+  }
+};
+function Button({
+  children,
+  variant = "primary",
+  size = "md",
+  block = false,
+  disabled = false,
+  iconLeft,
+  iconRight,
+  as = "button",
+  href,
+  onClick,
+  type = "button",
+  style,
+  ...rest
+}) {
+  const [hover, setHover] = React.useState(false);
+  const [press, setPress] = React.useState(false);
+  const Tag = as === "a" ? "a" : "button";
+  const base = {
+    display: block ? "flex" : "inline-flex",
+    width: block ? "100%" : "auto",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "10px",
+    fontFamily: "var(--font-condensed)",
+    fontWeight: 700,
+    textTransform: "uppercase",
+    letterSpacing: "var(--ls-wider)",
+    borderRadius: "var(--radius-sm)",
+    cursor: disabled ? "not-allowed" : "pointer",
+    textDecoration: "none",
+    whiteSpace: "nowrap",
+    lineHeight: 1,
+    transition: "background var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-instant) var(--ease-out), color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out)",
+    ...SIZES[size],
+    ...VARIANTS[variant],
+    ...(hover && !disabled ? HOVER[variant] : null),
+    ...(press && !disabled ? {
+      transform: "var(--press)"
+    } : null),
+    ...(disabled ? {
+      background: "var(--action-disabled)",
+      borderColor: "var(--action-disabled)",
+      color: "var(--text-faint)",
+      boxShadow: "none"
+    } : null),
+    ...style
+  };
+  return /*#__PURE__*/React.createElement(Tag, _extends({}, rest, {
+    type: Tag === "button" ? type : undefined,
+    href: Tag === "a" ? href : undefined,
+    disabled: Tag === "button" ? disabled : undefined,
+    onClick: disabled ? undefined : onClick,
+    style: base,
+    onMouseEnter: () => setHover(true),
+    onMouseLeave: () => {
+      setHover(false);
+      setPress(false);
+    },
+    onMouseDown: () => setPress(true),
+    onMouseUp: () => setPress(false)
+  }), iconLeft, children, iconRight);
+}
+Object.assign(__ds_scope, { Button });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/core/Button.jsx", error: String((e && e.message) || e) }); }
+
+// components/core/Card.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+function Card({
+  children,
+  interactive = false,
+  selected = false,
+  accent = "naranja",
+  padding = "var(--card-pad)",
+  style,
+  onClick,
+  ...rest
+}) {
+  const [hover, setHover] = React.useState(false);
+  const line = accent === "azul" ? "var(--azul-500)" : "var(--naranja-500)";
+  const glow = accent === "azul" ? "var(--glow-azul)" : "var(--glow-naranja)";
+  return /*#__PURE__*/React.createElement("div", _extends({}, rest, {
+    onClick: onClick,
+    onMouseEnter: () => setHover(true),
+    onMouseLeave: () => setHover(false),
+    style: {
+      background: "var(--surface-card)",
+      border: "1px solid var(--border-hair)",
+      borderRadius: "var(--radius-md)",
+      padding,
+      position: "relative",
+      cursor: interactive ? "pointer" : "default",
+      boxShadow: "var(--shadow-sm)",
+      transition: "transform var(--dur-base) var(--ease-out), border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-base) var(--ease-out)",
+      ...(interactive && hover ? {
+        transform: "var(--lift)",
+        borderColor: line,
+        boxShadow: "var(--shadow-md)"
+      } : null),
+      ...(selected ? {
+        borderColor: line,
+        boxShadow: glow
+      } : null),
+      ...style
+    }
+  }), children);
+}
+Object.assign(__ds_scope, { Card });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/core/Card.jsx", error: String((e && e.message) || e) }); }
+
+// components/core/Icon.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+/** Envoltorio de Lucide (CDN). Requiere <script src="https://unpkg.com/lucide@latest"> en la página. */
+function Icon({
+  name,
+  size = 20,
+  strokeWidth = 2,
+  color = "currentColor",
+  style,
+  ...rest
+}) {
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el || !window.lucide) return;
+    el.innerHTML = "";
+    const i = document.createElement("i");
+    i.setAttribute("data-lucide", name);
+    el.appendChild(i);
+    try {
+      window.lucide.createIcons({
+        nameAttr: "data-lucide",
+        attrs: {
+          width: size,
+          height: size,
+          "stroke-width": strokeWidth
+        }
+      });
+    } catch (e) {/* CDN aún no cargó */}
+  }, [name, size, strokeWidth]);
+  return /*#__PURE__*/React.createElement("span", _extends({
+    ref: ref,
+    "aria-hidden": "true",
+    style: {
+      display: "inline-flex",
+      width: size,
+      height: size,
+      color,
+      flex: "0 0 auto",
+      ...style
+    }
+  }, rest));
+}
+Object.assign(__ds_scope, { Icon });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/core/Icon.jsx", error: String((e && e.message) || e) }); }
+
+// components/core/SectionHeading.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+function SectionHeading({
+  kicker,
+  title,
+  description,
+  align = "left",
+  tag,
+  style,
+  ...rest
+}) {
+  return /*#__PURE__*/React.createElement("header", _extends({}, rest, {
+    style: {
+      display: "grid",
+      gap: "var(--sp-3)",
+      justifyItems: align === "center" ? "center" : "start",
+      textAlign: align,
+      maxWidth: align === "center" ? "760px" : "none",
+      marginInline: align === "center" ? "auto" : 0,
+      ...style
+    }
+  }), kicker && /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "600 var(--fs-2xs)/1 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-widest)",
+      color: "var(--naranja-500)"
+    }
+  }, kicker), /*#__PURE__*/React.createElement("h2", {
+    style: {
+      font: "400 var(--fs-4xl)/var(--lh-tight) var(--font-display)",
+      textTransform: "uppercase",
+      color: "var(--text-strong)",
+      margin: 0
+    }
+  }, title), /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 64,
+      height: 4,
+      background: "var(--naranja-500)",
+      display: "block"
+    }
+  }), description && /*#__PURE__*/React.createElement("p", {
+    style: {
+      font: "var(--type-body)",
+      color: "var(--text-muted)",
+      margin: 0,
+      maxWidth: "56ch"
+    }
+  }, description), tag && /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: "var(--font-tag)",
+      color: "var(--naranja-500)",
+      fontSize: "var(--fs-lg)",
+      transform: "rotate(-3deg)",
+      display: "inline-block",
+      marginTop: "var(--sp-1)"
+    }
+  }, tag));
+}
+Object.assign(__ds_scope, { SectionHeading });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/core/SectionHeading.jsx", error: String((e && e.message) || e) }); }
+
+// components/forms/Input.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+function Input({
+  label,
+  hint,
+  error,
+  icon,
+  id,
+  style,
+  ...rest
+}) {
+  const [focus, setFocus] = React.useState(false);
+  const uid = React.useId();
+  const inputId = id || uid;
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: 6,
+      ...style
+    }
+  }, label && /*#__PURE__*/React.createElement("label", {
+    htmlFor: inputId,
+    style: {
+      font: "600 var(--fs-2xs)/1 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wider)",
+      color: "var(--text-muted)"
+    }
+  }, label), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      height: "var(--control-h)",
+      background: "var(--surface-raised)",
+      borderRadius: "var(--radius-sm)",
+      border: `1px solid ${error ? "var(--rojo-500)" : focus ? "var(--azul-neon)" : "var(--border-hair)"}`,
+      boxShadow: focus && !error ? "0 0 0 3px rgba(46,155,240,.22)" : "none",
+      padding: "0 14px",
+      transition: "border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out)"
+    }
+  }, icon && /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "var(--text-faint)",
+      display: "inline-flex"
+    }
+  }, icon), /*#__PURE__*/React.createElement("input", _extends({}, rest, {
+    id: inputId,
+    onFocus: e => {
+      setFocus(true);
+      rest.onFocus && rest.onFocus(e);
+    },
+    onBlur: e => {
+      setFocus(false);
+      rest.onBlur && rest.onBlur(e);
+    },
+    style: {
+      flex: 1,
+      minWidth: 0,
+      background: "transparent",
+      border: 0,
+      outline: "none",
+      color: "var(--text-strong)",
+      font: "var(--type-small)"
+    }
+  }))), (error || hint) && /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "var(--fw-regular) var(--fs-2xs)/1.4 var(--font-body)",
+      color: error ? "#F08B8F" : "var(--text-faint)"
+    }
+  }, error || hint));
+}
+Object.assign(__ds_scope, { Input });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/forms/Input.jsx", error: String((e && e.message) || e) }); }
+
+// components/forms/OptionChip.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+function OptionChip({
+  children,
+  selected = false,
+  disabled = false,
+  accent = "naranja",
+  onClick,
+  style,
+  ...rest
+}) {
+  const [hover, setHover] = React.useState(false);
+  const line = accent === "azul" ? "var(--azul-500)" : "var(--naranja-500)";
+  return /*#__PURE__*/React.createElement("button", _extends({
+    type: "button"
+  }, rest, {
+    onClick: disabled ? undefined : onClick,
+    disabled: disabled,
+    onMouseEnter: () => setHover(true),
+    onMouseLeave: () => setHover(false),
+    "aria-pressed": selected,
+    style: {
+      minHeight: "var(--control-h-sm)",
+      padding: "8px 16px",
+      cursor: disabled ? "not-allowed" : "pointer",
+      background: selected ? line : "var(--surface-raised)",
+      color: selected ? accent === "azul" ? "var(--text-on-blue)" : "var(--text-on-accent)" : disabled ? "var(--text-faint)" : "var(--text-body)",
+      border: `1px solid ${selected ? line : hover && !disabled ? "var(--border-strong)" : "var(--border-hair)"}`,
+      borderRadius: "var(--radius-sm)",
+      font: "700 var(--fs-2xs)/1 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wide)",
+      textDecoration: disabled ? "line-through" : "none",
+      opacity: disabled ? .5 : 1,
+      transition: "background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out)",
+      ...style
+    }
+  }), children);
+}
+Object.assign(__ds_scope, { OptionChip });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/forms/OptionChip.jsx", error: String((e && e.message) || e) }); }
+
+// components/forms/Select.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+function Select({
+  label,
+  hint,
+  options = [],
+  style,
+  ...rest
+}) {
+  const [focus, setFocus] = React.useState(false);
+  const uid = React.useId();
+  const id = rest.id || uid;
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: 6,
+      ...style
+    }
+  }, label && /*#__PURE__*/React.createElement("label", {
+    htmlFor: id,
+    style: {
+      font: "600 var(--fs-2xs)/1 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wider)",
+      color: "var(--text-muted)"
+    }
+  }, label), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "relative"
+    }
+  }, /*#__PURE__*/React.createElement("select", _extends({}, rest, {
+    id: id,
+    onFocus: () => setFocus(true),
+    onBlur: () => setFocus(false),
+    style: {
+      width: "100%",
+      height: "var(--control-h)",
+      appearance: "none",
+      background: "var(--surface-raised)",
+      color: "var(--text-strong)",
+      border: `1px solid ${focus ? "var(--azul-neon)" : "var(--border-hair)"}`,
+      boxShadow: focus ? "0 0 0 3px rgba(46,155,240,.22)" : "none",
+      borderRadius: "var(--radius-sm)",
+      padding: "0 40px 0 14px",
+      font: "var(--type-small)",
+      transition: "border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out)"
+    }
+  }), options.map(o => typeof o === "string" ? /*#__PURE__*/React.createElement("option", {
+    key: o,
+    value: o
+  }, o) : /*#__PURE__*/React.createElement("option", {
+    key: o.value,
+    value: o.value
+  }, o.label))), /*#__PURE__*/React.createElement("span", {
+    style: {
+      position: "absolute",
+      right: 14,
+      top: "50%",
+      transform: "translateY(-50%)",
+      color: "var(--text-faint)",
+      pointerEvents: "none",
+      font: "var(--type-small)"
+    }
+  }, "\u25BE")), hint && /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "var(--fw-regular) var(--fs-2xs)/1.4 var(--font-body)",
+      color: "var(--text-faint)"
+    }
+  }, hint));
+}
+Object.assign(__ds_scope, { Select });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/forms/Select.jsx", error: String((e && e.message) || e) }); }
+
+// components/marketing/FaqItem.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+function FaqItem({
+  question,
+  answer,
+  defaultOpen = false,
+  style,
+  ...rest
+}) {
+  const [open, setOpen] = React.useState(defaultOpen);
+  return /*#__PURE__*/React.createElement("div", _extends({}, rest, {
+    style: {
+      borderBottom: "1px solid var(--border-hair)",
+      ...style
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: () => setOpen(o => !o),
+    "aria-expanded": open,
+    style: {
+      width: "100%",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: "var(--sp-4)",
+      background: "transparent",
+      border: 0,
+      cursor: "pointer",
+      padding: "var(--sp-5) 0",
+      textAlign: "left",
+      font: "700 var(--fs-lg)/1.25 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wide)",
+      color: open ? "var(--naranja-500)" : "var(--text-strong)",
+      transition: "color var(--dur-fast) var(--ease-out)"
+    }
+  }, question, /*#__PURE__*/React.createElement("span", {
+    style: {
+      flex: "0 0 auto",
+      width: 28,
+      height: 28,
+      display: "grid",
+      placeItems: "center",
+      border: "1px solid var(--border-soft)",
+      borderRadius: "var(--radius-sm)",
+      color: "var(--naranja-500)",
+      transform: open ? "rotate(45deg)" : "none",
+      transition: "transform var(--dur-base) var(--ease-out)"
+    }
+  }, "+")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateRows: open ? "1fr" : "0fr",
+      transition: "grid-template-rows var(--dur-base) var(--ease-out)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      overflow: "hidden"
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: 0,
+      paddingBottom: "var(--sp-5)",
+      font: "var(--type-body)",
+      color: "var(--text-muted)",
+      maxWidth: "68ch"
+    }
+  }, answer))));
+}
+Object.assign(__ds_scope, { FaqItem });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/marketing/FaqItem.jsx", error: String((e && e.message) || e) }); }
+
+// components/marketing/PriceCard.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+function PriceCard({
+  name,
+  price,
+  note,
+  features = [],
+  featured = false,
+  cta = "Pedir turno",
+  onCta,
+  style,
+  ...rest
+}) {
+  return /*#__PURE__*/React.createElement(__ds_scope.Card, _extends({
+    selected: featured,
+    padding: "var(--card-pad-lg)",
+    style: {
+      display: "grid",
+      gap: "var(--sp-4)",
+      alignContent: "start",
+      ...style
+    }
+  }, rest), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("h3", {
+    style: {
+      margin: 0,
+      font: "700 var(--fs-lg)/1 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wider)",
+      color: "var(--text-strong)"
+    }
+  }, name), featured && /*#__PURE__*/React.createElement(__ds_scope.Badge, {
+    tone: "solido"
+  }, "Recomendado")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "baseline",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "400 var(--fs-4xl)/1 var(--font-display)",
+      color: "var(--naranja-500)"
+    }
+  }, price), note && /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "var(--type-small)",
+      color: "var(--text-faint)"
+    }
+  }, note)), /*#__PURE__*/React.createElement("ul", {
+    style: {
+      listStyle: "none",
+      margin: 0,
+      padding: 0,
+      display: "grid",
+      gap: "var(--sp-2)"
+    }
+  }, features.map((f, i) => /*#__PURE__*/React.createElement("li", {
+    key: i,
+    style: {
+      display: "flex",
+      gap: 10,
+      font: "var(--type-small)",
+      color: "var(--text-body)"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "var(--verde-500)",
+      fontWeight: 700
+    }
+  }, "\u2713"), f))), /*#__PURE__*/React.createElement(__ds_scope.Button, {
+    variant: featured ? "primary" : "outline",
+    block: true,
+    onClick: onCta
+  }, cta));
+}
+Object.assign(__ds_scope, { PriceCard });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/marketing/PriceCard.jsx", error: String((e && e.message) || e) }); }
+
+// components/marketing/ReviewCard.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+function ReviewCard({
+  quote,
+  author,
+  meta,
+  rating = 5,
+  style,
+  ...rest
+}) {
+  return /*#__PURE__*/React.createElement(__ds_scope.Card, _extends({
+    padding: "var(--card-pad)",
+    style: {
+      display: "grid",
+      gap: "var(--sp-3)",
+      alignContent: "start",
+      ...style
+    }
+  }, rest), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 2,
+      color: "var(--ambar-500)",
+      fontSize: "var(--fs-sm)",
+      letterSpacing: "2px"
+    }
+  }, "★".repeat(rating)), /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: 0,
+      font: "var(--type-body)",
+      color: "var(--text-body)"
+    }
+  }, quote), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: 2,
+      borderTop: "1px solid var(--border-hair)",
+      paddingTop: "var(--sp-3)"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "700 var(--fs-sm)/1 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wide)",
+      color: "var(--text-strong)"
+    }
+  }, author), meta && /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "var(--fw-regular) var(--fs-2xs)/1.4 var(--font-body)",
+      color: "var(--text-faint)"
+    }
+  }, meta)));
+}
+Object.assign(__ds_scope, { ReviewCard });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/marketing/ReviewCard.jsx", error: String((e && e.message) || e) }); }
+
+// components/marketing/ServiceCard.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+function ServiceCard({
+  image,
+  title,
+  description,
+  price,
+  duration,
+  badge,
+  icon,
+  onClick,
+  selected,
+  style,
+  ...rest
+}) {
+  return /*#__PURE__*/React.createElement(__ds_scope.Card, _extends({
+    interactive: !!onClick,
+    selected: selected,
+    onClick: onClick,
+    padding: "0",
+    style: {
+      overflow: "hidden",
+      display: "flex",
+      flexDirection: "column",
+      ...style
+    }
+  }, rest), image && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "relative",
+      aspectRatio: "16 / 10",
+      overflow: "hidden",
+      background: "var(--negro-950)"
+    }
+  }, /*#__PURE__*/React.createElement("img", {
+    src: image,
+    alt: "",
+    style: {
+      width: "100%",
+      height: "100%",
+      objectFit: "cover",
+      filter: "grayscale(.35) contrast(1.08)"
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      inset: 0,
+      background: "var(--scrim-bottom)"
+    }
+  }), badge && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      top: 12,
+      left: 12
+    }
+  }, /*#__PURE__*/React.createElement(__ds_scope.Badge, {
+    tone: "solido"
+  }, badge))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "var(--card-pad)",
+      display: "grid",
+      gap: "var(--sp-2)",
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10
+    }
+  }, icon && /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "var(--naranja-500)",
+      display: "inline-flex"
+    }
+  }, icon), /*#__PURE__*/React.createElement("h3", {
+    style: {
+      margin: 0,
+      font: "700 var(--fs-xl)/1.1 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wide)",
+      color: "var(--text-strong)"
+    }
+  }, title)), description && /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: 0,
+      font: "var(--type-small)",
+      color: "var(--text-muted)"
+    }
+  }, description), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "baseline",
+      gap: "var(--sp-3)",
+      marginTop: "auto",
+      paddingTop: "var(--sp-3)",
+      borderTop: "1px solid var(--border-hair)"
+    }
+  }, price && /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "700 var(--fs-xl)/1 var(--font-condensed)",
+      color: "var(--naranja-500)"
+    }
+  }, price), duration && /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "600 var(--fs-2xs)/1 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wider)",
+      color: "var(--text-faint)"
+    }
+  }, duration))));
+}
+Object.assign(__ds_scope, { ServiceCard });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/marketing/ServiceCard.jsx", error: String((e && e.message) || e) }); }
+
+// components/marketing/StatBlock.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+function StatBlock({
+  value,
+  label,
+  accent = "naranja",
+  style,
+  ...rest
+}) {
+  return /*#__PURE__*/React.createElement("div", _extends({}, rest, {
+    style: {
+      display: "grid",
+      gap: 4,
+      ...style
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "400 var(--fs-4xl)/1 var(--font-display)",
+      color: accent === "azul" ? "var(--azul-neon)" : "var(--naranja-500)"
+    }
+  }, value), /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "600 var(--fs-2xs)/1.3 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-widest)",
+      color: "var(--text-faint)"
+    }
+  }, label));
+}
+Object.assign(__ds_scope, { StatBlock });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/marketing/StatBlock.jsx", error: String((e && e.message) || e) }); }
+
+// components/turnos/BarberCard.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+const ESTADOS = {
+  libre: {
+    tone: "libre",
+    texto: "Disponible"
+  },
+  turno: {
+    tone: "turno",
+    texto: "En atención"
+  },
+  ocupado: {
+    tone: "ocupado",
+    texto: "Sin cupo hoy"
+  }
+};
+function BarberCard({
+  name,
+  role,
+  photo,
+  estado = "libre",
+  nextSlot,
+  specialty,
+  selected = false,
+  onClick,
+  style,
+  ...rest
+}) {
+  const e = ESTADOS[estado] || ESTADOS.libre;
+  const initials = name.split(" ").map(w => w[0]).slice(0, 2).join("");
+  return /*#__PURE__*/React.createElement(__ds_scope.Card, _extends({
+    interactive: !!onClick,
+    selected: selected,
+    accent: "azul",
+    onClick: onClick,
+    padding: "var(--sp-4)",
+    style: {
+      display: "flex",
+      gap: "var(--sp-4)",
+      alignItems: "center",
+      ...style
+    }
+  }, rest), /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 56,
+      height: 56,
+      flex: "0 0 auto",
+      borderRadius: "var(--radius-pill)",
+      overflow: "hidden",
+      background: "var(--negro-600)",
+      display: "grid",
+      placeItems: "center",
+      border: "1px solid var(--border-hair)"
+    }
+  }, photo ? /*#__PURE__*/React.createElement("img", {
+    src: photo,
+    alt: "",
+    style: {
+      width: "100%",
+      height: "100%",
+      objectFit: "cover",
+      filter: "grayscale(.5)"
+    }
+  }) : /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "700 var(--fs-lg)/1 var(--font-condensed)",
+      color: "var(--text-muted)"
+    }
+  }, initials)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: 4,
+      minWidth: 0,
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: "var(--sp-2)",
+      flexWrap: "wrap"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "700 var(--fs-lg)/1 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wide)",
+      color: "var(--text-strong)"
+    }
+  }, name), /*#__PURE__*/React.createElement(__ds_scope.Badge, {
+    tone: e.tone,
+    dot: estado !== "ocupado"
+  }, e.texto)), role && /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "var(--fw-regular) var(--fs-2xs)/1.4 var(--font-body)",
+      color: "var(--text-faint)"
+    }
+  }, role), specialty && /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "var(--type-small)",
+      color: "var(--text-muted)"
+    }
+  }, specialty)), nextSlot && /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "right",
+      flex: "0 0 auto"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      font: "600 var(--fs-3xs)/1 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wider)",
+      color: "var(--text-faint)"
+    }
+  }, "Pr\xF3ximo"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      font: "700 var(--fs-xl)/1.1 var(--font-condensed)",
+      color: "var(--azul-neon)"
+    }
+  }, nextSlot)));
+}
+Object.assign(__ds_scope, { BarberCard });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/turnos/BarberCard.jsx", error: String((e && e.message) || e) }); }
+
+// components/turnos/QueueStatus.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+function QueueStatus({
+  enAtencion,
+  enEspera = [],
+  esperaMin,
+  style,
+  ...rest
+}) {
+  return /*#__PURE__*/React.createElement(__ds_scope.Card, _extends({
+    padding: "var(--card-pad)",
+    accent: "azul",
+    style: {
+      display: "grid",
+      gap: "var(--sp-4)",
+      ...style
+    }
+  }, rest), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: "var(--sp-4)"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "600 var(--fs-2xs)/1 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-widest)",
+      color: "var(--text-faint)"
+    }
+  }, "Cola en vivo"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 6,
+      font: "600 var(--fs-2xs)/1 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wide)",
+      color: "var(--verde-500)"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 7,
+      height: 7,
+      borderRadius: "50%",
+      background: "currentColor",
+      boxShadow: "0 0 8px currentColor"
+    }
+  }), "En directo")), enAtencion && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: 4,
+      paddingBottom: "var(--sp-4)",
+      borderBottom: "1px solid var(--border-hair)"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "600 var(--fs-3xs)/1 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wider)",
+      color: "var(--ambar-500)"
+    }
+  }, "Atendiendo ahora"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "400 var(--fs-3xl)/1 var(--font-display)",
+      color: "var(--text-strong)"
+    }
+  }, enAtencion)), /*#__PURE__*/React.createElement("ol", {
+    style: {
+      listStyle: "none",
+      margin: 0,
+      padding: 0,
+      display: "grid",
+      gap: "var(--sp-2)"
+    }
+  }, enEspera.map((t, i) => /*#__PURE__*/React.createElement("li", {
+    key: t.codigo,
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: "var(--sp-3)",
+      padding: "var(--sp-2) 0"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 22,
+      font: "700 var(--fs-sm)/1 var(--font-condensed)",
+      color: "var(--text-faint)"
+    }
+  }, i + 1), /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "700 var(--fs-lg)/1 var(--font-mono)",
+      color: "var(--azul-neon)",
+      letterSpacing: "var(--ls-wide)"
+    }
+  }, t.codigo), /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "var(--type-small)",
+      color: "var(--text-muted)",
+      marginLeft: "auto"
+    }
+  }, t.servicio)))), esperaMin != null && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "var(--surface-blue-soft)",
+      border: "1px solid rgba(46,155,240,.3)",
+      borderRadius: "var(--radius-sm)",
+      padding: "var(--sp-3)",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "600 var(--fs-2xs)/1 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wider)",
+      color: "var(--azul-300)"
+    }
+  }, "Espera estimada"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "700 var(--fs-xl)/1 var(--font-condensed)",
+      color: "var(--text-strong)"
+    }
+  }, esperaMin, " min")));
+}
+Object.assign(__ds_scope, { QueueStatus });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/turnos/QueueStatus.jsx", error: String((e && e.message) || e) }); }
+
+// components/turnos/SlotPicker.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+function SlotPicker({
+  jornadas = [],
+  value,
+  onChange,
+  style,
+  ...rest
+}) {
+  return /*#__PURE__*/React.createElement("div", _extends({}, rest, {
+    style: {
+      display: "grid",
+      gap: "var(--sp-5)",
+      ...style
+    }
+  }), jornadas.map(j => /*#__PURE__*/React.createElement("div", {
+    key: j.nombre,
+    style: {
+      display: "grid",
+      gap: "var(--sp-3)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "baseline",
+      gap: "var(--sp-3)"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "700 var(--fs-sm)/1 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wider)",
+      color: "var(--text-strong)"
+    }
+  }, j.nombre), /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "var(--fw-regular) var(--fs-2xs)/1 var(--font-body)",
+      color: "var(--text-faint)"
+    }
+  }, j.rango)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: "var(--sp-2)"
+    }
+  }, j.slots.map(s => /*#__PURE__*/React.createElement(__ds_scope.OptionChip, {
+    key: s.hora,
+    selected: value === s.hora,
+    disabled: !!s.tomado,
+    accent: "azul",
+    onClick: () => onChange && onChange(s.hora)
+  }, s.hora))))));
+}
+Object.assign(__ds_scope, { SlotPicker });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/turnos/SlotPicker.jsx", error: String((e && e.message) || e) }); }
+
+// components/turnos/StepIndicator.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+function StepIndicator({
+  steps = [],
+  current = 0,
+  style,
+  ...rest
+}) {
+  return /*#__PURE__*/React.createElement("ol", _extends({}, rest, {
+    style: {
+      listStyle: "none",
+      margin: 0,
+      padding: 0,
+      display: "flex",
+      alignItems: "center",
+      gap: "var(--sp-2)",
+      flexWrap: "wrap",
+      ...style
+    }
+  }), steps.map((s, i) => {
+    const done = i < current,
+      active = i === current;
+    return /*#__PURE__*/React.createElement("li", {
+      key: s,
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: "var(--sp-2)"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        width: 26,
+        height: 26,
+        display: "grid",
+        placeItems: "center",
+        borderRadius: "var(--radius-pill)",
+        background: done ? "var(--verde-500)" : active ? "var(--naranja-500)" : "transparent",
+        color: done || active ? "var(--negro-950)" : "var(--text-faint)",
+        border: `1px solid ${done ? "var(--verde-500)" : active ? "var(--naranja-500)" : "var(--border-soft)"}`,
+        font: "700 var(--fs-2xs)/1 var(--font-condensed)",
+        transition: "background var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out)"
+      }
+    }, done ? "✓" : i + 1), /*#__PURE__*/React.createElement("span", {
+      style: {
+        font: "600 var(--fs-2xs)/1 var(--font-condensed)",
+        textTransform: "uppercase",
+        letterSpacing: "var(--ls-wider)",
+        color: active ? "var(--text-strong)" : "var(--text-faint)"
+      }
+    }, s), i < steps.length - 1 && /*#__PURE__*/React.createElement("span", {
+      style: {
+        width: 24,
+        height: 1,
+        background: "var(--border-soft)",
+        marginInline: "var(--sp-1)"
+      }
+    }));
+  }));
+}
+Object.assign(__ds_scope, { StepIndicator });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/turnos/StepIndicator.jsx", error: String((e && e.message) || e) }); }
+
+// components/turnos/TurnoTicket.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+function TurnoTicket({
+  codigo,
+  servicio,
+  barbero,
+  fecha,
+  hora,
+  sede = "911 Urban Salón",
+  posicion,
+  style,
+  ...rest
+}) {
+  const filas = [["Servicio", servicio], ["Barbero", barbero], ["Fecha", fecha], ["Hora", hora], ["Sede", sede]].filter(r => r[1]);
+  return /*#__PURE__*/React.createElement("div", _extends({}, rest, {
+    style: {
+      background: "var(--blanco)",
+      color: "var(--negro-900)",
+      borderRadius: "var(--radius-sm)",
+      padding: "var(--sp-6)",
+      display: "grid",
+      gap: "var(--sp-4)",
+      maxWidth: 380,
+      boxShadow: "var(--shadow-lg)",
+      position: "relative",
+      overflow: "hidden",
+      ...style
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      insetInline: 0,
+      top: 0,
+      height: 6,
+      background: "repeating-linear-gradient(115deg, var(--rojo-500) 0 12px, var(--blanco) 12px 24px, var(--azul-500) 24px 36px, var(--blanco) 36px 48px)"
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: 2,
+      textAlign: "center",
+      paddingTop: "var(--sp-2)"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "600 var(--fs-3xs)/1 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-widest)",
+      color: "#63636D"
+    }
+  }, "Tu turno"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "400 var(--fs-6xl)/1 var(--font-display)",
+      color: "var(--negro-900)",
+      letterSpacing: "var(--ls-tight)"
+    }
+  }, codigo), posicion != null && /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "var(--fw-regular) var(--fs-2xs)/1.4 var(--font-body)",
+      color: "#63636D"
+    }
+  }, "Vas en el puesto ", posicion, " de la fila")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      borderTop: "2px dashed rgba(10,10,11,.18)",
+      paddingTop: "var(--sp-4)",
+      display: "grid",
+      gap: "var(--sp-2)"
+    }
+  }, filas.map(([k, v]) => /*#__PURE__*/React.createElement("div", {
+    key: k,
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      gap: "var(--sp-4)"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "600 var(--fs-2xs)/1.4 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wider)",
+      color: "#63636D"
+    }
+  }, k), /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "700 var(--fs-sm)/1.4 var(--font-condensed)",
+      textTransform: "uppercase",
+      color: "var(--negro-900)",
+      textAlign: "right"
+    }
+  }, v)))), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: "var(--font-tag)",
+      fontSize: "var(--fs-sm)",
+      color: "var(--rojo-500)",
+      textAlign: "center",
+      transform: "rotate(-2deg)"
+    }
+  }, "Tu belleza, nuestra emergencia"));
+}
+Object.assign(__ds_scope, { TurnoTicket });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/turnos/TurnoTicket.jsx", error: String((e && e.message) || e) }); }
+
+
+__ds_ns.Badge = __ds_scope.Badge;
+
+__ds_ns.Button = __ds_scope.Button;
+
+__ds_ns.Card = __ds_scope.Card;
+
+__ds_ns.Icon = __ds_scope.Icon;
+
+__ds_ns.SectionHeading = __ds_scope.SectionHeading;
+
+__ds_ns.Input = __ds_scope.Input;
+
+__ds_ns.OptionChip = __ds_scope.OptionChip;
+
+__ds_ns.Select = __ds_scope.Select;
+
+__ds_ns.FaqItem = __ds_scope.FaqItem;
+
+__ds_ns.PriceCard = __ds_scope.PriceCard;
+
+__ds_ns.ReviewCard = __ds_scope.ReviewCard;
+
+__ds_ns.ServiceCard = __ds_scope.ServiceCard;
+
+__ds_ns.StatBlock = __ds_scope.StatBlock;
+
+__ds_ns.BarberCard = __ds_scope.BarberCard;
+
+__ds_ns.QueueStatus = __ds_scope.QueueStatus;
+
+__ds_ns.SlotPicker = __ds_scope.SlotPicker;
+
+__ds_ns.StepIndicator = __ds_scope.StepIndicator;
+
+__ds_ns.TurnoTicket = __ds_scope.TurnoTicket;
+// ui_kits/landing/Chrome.jsx
+try { (() => {
+const {
+  Button,
+  Icon
+} = window.Ds911UrbanSalNDesignSystem_1e06a9;
+function NavBar({
+  onCta
+}) {
+  const [solid, setSolid] = React.useState(false);
+  React.useEffect(() => {
+    const el = document.querySelector("[data-scroll-root]") || window;
+    const onScroll = () => setSolid((el === window ? window.scrollY : el.scrollTop) > 40);
+    el.addEventListener("scroll", onScroll);
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+  const links = [["Servicios", "#servicios"], ["Cortes", "#cortes"], ["Spa", "#spa"], ["Equipo", "#equipo"], ["Turnos", "#turnos"], ["Horarios", "#horarios"]];
+  return /*#__PURE__*/React.createElement("header", {
+    style: {
+      position: "sticky",
+      top: 0,
+      zIndex: 40,
+      display: "flex",
+      alignItems: "center",
+      gap: "var(--sp-6)",
+      padding: "12px var(--gutter)",
+      borderBottom: "1px solid " + (solid ? "var(--border-hair)" : "transparent"),
+      background: solid ? "rgba(10,10,11,.86)" : "transparent",
+      backdropFilter: solid ? "blur(14px)" : "none",
+      transition: "background var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out)"
+    }
+  }, /*#__PURE__*/React.createElement("a", {
+    href: "#top",
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("img", {
+    src: "/assets/logo-911-urban-salon-dark.png",
+    alt: "911 Urban Sal\xF3n",
+    style: {
+      height: 46
+    }
+  })), /*#__PURE__*/React.createElement("nav", {
+    style: {
+      display: "flex",
+      gap: "var(--sp-5)",
+      marginLeft: "auto"
+    }
+  }, links.map(([t, h]) => /*#__PURE__*/React.createElement("a", {
+    key: h,
+    href: h,
+    style: {
+      font: "600 var(--fs-2xs)/1 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wider)",
+      color: "var(--text-body)"
+    }
+  }, t))), /*#__PURE__*/React.createElement(Button, {
+    size: "sm",
+    onClick: onCta,
+    iconLeft: /*#__PURE__*/React.createElement(Icon, {
+      name: "calendar-clock",
+      size: 15
+    })
+  }, "Pedir turno"));
+}
+function Hero({
+  onCta
+}) {
+  const D = window.DATA_911;
+  return /*#__PURE__*/React.createElement("section", {
+    id: "top",
+    style: {
+      position: "relative",
+      minHeight: 620,
+      display: "grid",
+      alignItems: "center",
+      overflow: "hidden",
+      marginTop: -70,
+      paddingTop: 70
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      inset: 0,
+      background: "url('/assets/texture-graffiti-black.jpeg') center/cover"
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      inset: 0,
+      background: "linear-gradient(100deg, rgba(5,5,6,.96) 34%, rgba(5,5,6,.72) 62%, rgba(5,5,6,.9))"
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "u-container",
+    style: {
+      position: "relative",
+      display: "grid",
+      gridTemplateColumns: "1.15fr .85fr",
+      gap: "var(--sp-12)",
+      alignItems: "center",
+      paddingBlock: "var(--sp-16)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: "var(--sp-5)",
+      justifyItems: "start"
+    },
+    "data-aos": "fade-right"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "u-kicker"
+  }, "Barber\xEDa \xB7 Spa \xB7 Masajes"), /*#__PURE__*/React.createElement("h1", {
+    style: {
+      font: "400 var(--fs-6xl)/var(--lh-tight) var(--font-display)",
+      color: "var(--text-strong)",
+      margin: 0
+    }
+  }, "Tu belleza,", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "var(--naranja-500)"
+    }
+  }, "nuestra emergencia")), /*#__PURE__*/React.createElement("p", {
+    style: {
+      font: "var(--type-body)",
+      color: "var(--text-muted)",
+      maxWidth: "48ch",
+      margin: 0
+    }
+  }, "Elige servicio, barbero y hora. El sistema te asigna el turno m\xE1s cercano y te lo confirma al instante \u2014 sin fila, sin llamadas."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: "var(--sp-3)",
+      flexWrap: "wrap"
+    }
+  }, /*#__PURE__*/React.createElement(Button, {
+    size: "lg",
+    onClick: onCta,
+    iconLeft: /*#__PURE__*/React.createElement(Icon, {
+      name: "calendar-clock",
+      size: 18
+    })
+  }, "Pedir mi turno"), /*#__PURE__*/React.createElement(Button, {
+    size: "lg",
+    variant: "outline",
+    as: "a",
+    href: "#cortes"
+  }, "Ver la carta")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: "var(--sp-8)",
+      marginTop: "var(--sp-4)"
+    }
+  }, [["6", "Barberos en silla"], ["2", "Jornadas al día"], ["6", "Días a la semana"]].map(([v, l]) => /*#__PURE__*/React.createElement("div", {
+    key: l,
+    style: {
+      display: "grid",
+      gap: 2
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "400 var(--fs-3xl)/1 var(--font-display)",
+      color: "var(--text-strong)"
+    }
+  }, v), /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "600 var(--fs-3xs)/1.3 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-widest)",
+      color: "var(--text-faint)"
+    }
+  }, l))))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "relative"
+    },
+    "data-aos": "fade-left"
+  }, /*#__PURE__*/React.createElement("img", {
+    src: "/assets/logo-911-urban-salon-dark.png",
+    alt: "911 Urban Sal\xF3n",
+    style: {
+      width: "100%",
+      filter: "drop-shadow(0 24px 60px rgba(0,0,0,.7))"
+    }
+  }))));
+}
+function Footer() {
+  const D = window.DATA_911;
+  return /*#__PURE__*/React.createElement("footer", {
+    style: {
+      borderTop: "1px solid var(--border-hair)",
+      background: "var(--negro-950)",
+      paddingBlock: "var(--sp-12)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "u-container",
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1.2fr 1fr 1fr",
+      gap: "var(--sp-10)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: "var(--sp-4)",
+      justifyItems: "start"
+    }
+  }, /*#__PURE__*/React.createElement("img", {
+    src: "/assets/logo-911-urban-salon-dark.png",
+    alt: "911 Urban Sal\xF3n",
+    style: {
+      height: 110
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: "var(--font-tag)",
+      color: "var(--naranja-500)",
+      transform: "rotate(-2deg)",
+      display: "inline-block"
+    }
+  }, "Tu belleza, nuestra emergencia")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: "var(--sp-3)",
+      alignContent: "start"
+    }
+  }, /*#__PURE__*/React.createElement("h4", {
+    style: {
+      font: "700 var(--fs-sm)/1 var(--font-condensed)",
+      letterSpacing: "var(--ls-wider)",
+      color: "var(--text-strong)",
+      margin: 0
+    }
+  }, "Horarios"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "var(--type-small)",
+      color: "var(--text-muted)"
+    }
+  }, "Mi\xE9rcoles a lunes", /*#__PURE__*/React.createElement("br", null), "Barberos 9:00 a.m \u2014 9:00 p.m", /*#__PURE__*/React.createElement("br", null), "Masajistas 10:00 a.m \u2014 5:00 p.m")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: "var(--sp-3)",
+      alignContent: "start"
+    }
+  }, /*#__PURE__*/React.createElement("h4", {
+    style: {
+      font: "700 var(--fs-sm)/1 var(--font-condensed)",
+      letterSpacing: "var(--ls-wider)",
+      color: "var(--text-strong)",
+      margin: 0
+    }
+  }, "Contacto"), /*#__PURE__*/React.createElement("a", {
+    href: "https://wa.me/" + D.telefono,
+    style: {
+      display: "flex",
+      gap: 8,
+      alignItems: "center",
+      font: "var(--type-small)"
+    }
+  }, /*#__PURE__*/React.createElement(Icon, {
+    name: "message-circle",
+    size: 16
+  }), "WhatsApp"), /*#__PURE__*/React.createElement("a", {
+    href: "#",
+    style: {
+      display: "flex",
+      gap: 8,
+      alignItems: "center",
+      font: "var(--type-small)"
+    }
+  }, /*#__PURE__*/React.createElement(Icon, {
+    name: "instagram",
+    size: 16
+  }), "@911urbansalon"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: "flex",
+      gap: 8,
+      alignItems: "flex-start",
+      font: "var(--type-small)",
+      color: "var(--text-faint)"
+    }
+  }, /*#__PURE__*/React.createElement(Icon, {
+    name: "map-pin",
+    size: 16
+  }), D.direccion))), /*#__PURE__*/React.createElement("div", {
+    className: "u-container",
+    style: {
+      marginTop: "var(--sp-8)",
+      paddingTop: "var(--sp-5)",
+      borderTop: "1px solid var(--border-hair)",
+      font: "var(--fw-regular) var(--fs-2xs)/1.5 var(--font-body)",
+      color: "var(--text-faint)"
+    }
+  }, "911 S.A.S \xB7 Todos los derechos reservados"));
+}
+function BarraWhatsApp() {
+  const D = window.DATA_911;
+  return /*#__PURE__*/React.createElement("a", {
+    href: "https://wa.me/" + D.telefono,
+    target: "_blank",
+    rel: "noopener",
+    style: {
+      position: "fixed",
+      right: 22,
+      bottom: 22,
+      zIndex: 50,
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 10,
+      background: "var(--verde-500)",
+      color: "var(--blanco)",
+      padding: "14px 20px",
+      borderRadius: "var(--radius-pill)",
+      font: "700 var(--fs-2xs)/1 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wider)",
+      boxShadow: "var(--shadow-lg)"
+    }
+  }, /*#__PURE__*/React.createElement(Icon, {
+    name: "message-circle",
+    size: 18
+  }), "Escr\xEDbenos");
+}
+Object.assign(window, {
+  NavBar,
+  Hero,
+  Footer,
+  BarraWhatsApp
+});
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/landing/Chrome.jsx", error: String((e && e.message) || e) }); }
+
+// ui_kits/landing/Secciones.jsx
+try { (() => {
+const {
+  SectionHeading,
+  ServiceCard,
+  Card,
+  Badge,
+  Icon,
+  ReviewCard,
+  FaqItem,
+  Button
+} = window.Ds911UrbanSalNDesignSystem_1e06a9;
+const S = {
+  paddingBlock: "var(--section-y)"
+};
+function Servicios() {
+  const D = window.DATA_911;
+  return /*#__PURE__*/React.createElement("section", {
+    id: "servicios",
+    style: S
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "u-container",
+    style: {
+      display: "grid",
+      gap: "var(--sp-10)"
+    }
+  }, /*#__PURE__*/React.createElement(SectionHeading, {
+    kicker: "Carta",
+    title: "Cuatro frentes, un mismo est\xE1ndar",
+    description: "Lo que hacemos en silla y lo que hacemos en camilla.",
+    align: "center"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "repeat(4, 1fr)",
+      gap: "var(--sp-4)"
+    }
+  }, D.categorias.map((c, i) => /*#__PURE__*/React.createElement(Card, {
+    key: c.titulo,
+    interactive: true,
+    padding: "var(--card-pad)",
+    "data-aos": "fade-up",
+    "data-aos-delay": i * 80,
+    style: {
+      display: "grid",
+      gap: "var(--sp-3)",
+      alignContent: "start"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 44,
+      height: 44,
+      display: "grid",
+      placeItems: "center",
+      borderRadius: "var(--radius-sm)",
+      background: "var(--surface-accent-soft)",
+      color: "var(--naranja-500)"
+    }
+  }, /*#__PURE__*/React.createElement(Icon, {
+    name: c.icon,
+    size: 22
+  })), /*#__PURE__*/React.createElement("h3", {
+    style: {
+      margin: 0,
+      font: "700 var(--fs-lg)/1.1 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wide)",
+      color: "var(--text-strong)"
+    }
+  }, c.titulo), /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: 0,
+      font: "var(--type-small)",
+      color: "var(--text-muted)"
+    }
+  }, c.texto))))));
+}
+function Cortes({
+  onPedir
+}) {
+  const D = window.DATA_911;
+  return /*#__PURE__*/React.createElement("section", {
+    id: "cortes",
+    style: {
+      ...S,
+      background: "var(--negro-950)",
+      borderBlock: "1px solid var(--border-hair)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "u-container",
+    style: {
+      display: "grid",
+      gap: "var(--sp-10)"
+    }
+  }, /*#__PURE__*/React.createElement(SectionHeading, {
+    kicker: "Estilos de corte",
+    title: "Los cortes que dominamos",
+    description: "Cada uno con su tiempo real de silla, para que el turno que te asignamos sea el que de verdad necesitas."
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "repeat(4, 1fr)",
+      gap: "var(--sp-4)"
+    }
+  }, D.cortes.map((c, i) => /*#__PURE__*/React.createElement("div", {
+    key: c.nombre,
+    "data-aos": "fade-up",
+    "data-aos-delay": i * 80,
+    style: {
+      display: "grid"
+    }
+  }, /*#__PURE__*/React.createElement(ServiceCard, {
+    image: "/assets/servicios/" + c.img + ".jpeg",
+    title: c.nombre,
+    description: c.desc,
+    price: c.precio,
+    duration: c.dur,
+    badge: c.badge,
+    onClick: () => onPedir(c.nombre)
+  }))))));
+}
+function Spa() {
+  const D = window.DATA_911;
+  return /*#__PURE__*/React.createElement("section", {
+    id: "spa",
+    style: S
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "u-container",
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: "var(--sp-12)",
+      alignItems: "start"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: "var(--sp-6)"
+    },
+    "data-aos": "fade-right"
+  }, /*#__PURE__*/React.createElement(SectionHeading, {
+    kicker: "Spa y masajes",
+    title: "Massoterapia",
+    description: "Conjunto de t\xE9cnicas para tratamiento terap\xE9utico, alivio de dolores, estr\xE9s y bienestar en general.",
+    tag: "Bienestar es equilibrio"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: "var(--sp-3)"
+    }
+  }, D.spa.map(s => /*#__PURE__*/React.createElement(Card, {
+    key: s.nombre,
+    padding: "var(--sp-4)",
+    style: {
+      display: "flex",
+      gap: "var(--sp-4)",
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 40,
+      height: 40,
+      flex: "0 0 auto",
+      display: "grid",
+      placeItems: "center",
+      borderRadius: "var(--radius-sm)",
+      background: "var(--surface-blue-soft)",
+      color: "var(--azul-neon)"
+    }
+  }, /*#__PURE__*/React.createElement(Icon, {
+    name: s.icon,
+    size: 20
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: 2,
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "700 var(--fs-lg)/1 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wide)",
+      color: "var(--text-strong)"
+    }
+  }, s.nombre), /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "var(--type-small)",
+      color: "var(--text-muted)"
+    }
+  }, s.desc)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "right"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      font: "700 var(--fs-lg)/1 var(--font-condensed)",
+      color: "var(--naranja-500)"
+    }
+  }, s.precio), /*#__PURE__*/React.createElement("div", {
+    style: {
+      font: "600 var(--fs-3xs)/1.6 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wider)",
+      color: "var(--text-faint)"
+    }
+  }, s.dur)))))), /*#__PURE__*/React.createElement(Card, {
+    padding: "var(--card-pad-lg)",
+    accent: "azul",
+    "data-aos": "fade-left",
+    style: {
+      display: "grid",
+      gap: "var(--sp-5)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: "var(--sp-2)"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "u-kicker"
+  }, "Limpieza facial para hombres"), /*#__PURE__*/React.createElement("h3", {
+    style: {
+      margin: 0,
+      font: "400 var(--fs-3xl)/1 var(--font-display)",
+      textTransform: "uppercase",
+      color: "var(--text-strong)"
+    }
+  }, "Siete pasos")), /*#__PURE__*/React.createElement("ol", {
+    style: {
+      listStyle: "none",
+      margin: 0,
+      padding: 0,
+      display: "grid",
+      gap: "var(--sp-3)"
+    }
+  }, D.facial.map((p, i) => /*#__PURE__*/React.createElement("li", {
+    key: p,
+    style: {
+      display: "flex",
+      gap: "var(--sp-4)",
+      alignItems: "center",
+      paddingBottom: "var(--sp-3)",
+      borderBottom: i < D.facial.length - 1 ? "1px solid var(--border-hair)" : "none"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "400 var(--fs-xl)/1 var(--font-display)",
+      color: "var(--azul-neon)",
+      width: 30
+    }
+  }, String(i + 1).padStart(2, "0")), /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "var(--type-body)",
+      color: "var(--text-body)"
+    }
+  }, p)))))));
+}
+function ComoFunciona() {
+  const D = window.DATA_911;
+  return /*#__PURE__*/React.createElement("section", {
+    id: "flujo",
+    style: {
+      ...S,
+      position: "relative",
+      overflow: "hidden"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      inset: 0,
+      background: "url('/assets/texture-graffiti-black.jpeg') center/cover",
+      opacity: .18
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "u-container",
+    style: {
+      position: "relative",
+      display: "grid",
+      gap: "var(--sp-10)"
+    }
+  }, /*#__PURE__*/React.createElement(SectionHeading, {
+    kicker: "Flujograma de atenci\xF3n",
+    title: "C\xF3mo te atendemos",
+    description: "El mismo recorrido para todos, desde que entras hasta que te vas.",
+    align: "center"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "repeat(4, 1fr)",
+      gap: "var(--sp-4)"
+    }
+  }, D.flujo.map((p, i) => /*#__PURE__*/React.createElement(Card, {
+    key: p.n,
+    padding: "var(--sp-5)",
+    "data-aos": "fade-up",
+    "data-aos-delay": i * 60,
+    style: {
+      display: "grid",
+      gap: "var(--sp-2)",
+      alignContent: "start",
+      gridColumn: i === 6 ? "span 1" : "auto"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "400 var(--fs-4xl)/1 var(--font-display)",
+      color: "var(--naranja-500)",
+      opacity: .9
+    }
+  }, p.n), /*#__PURE__*/React.createElement("h3", {
+    style: {
+      margin: 0,
+      font: "700 var(--fs-base)/1.15 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wide)",
+      color: "var(--text-strong)"
+    }
+  }, p.t), /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: 0,
+      font: "var(--type-small)",
+      color: "var(--text-muted)"
+    }
+  }, p.d))), /*#__PURE__*/React.createElement(Card, {
+    padding: "var(--sp-5)",
+    accent: "azul",
+    selected: true,
+    style: {
+      display: "grid",
+      gap: "var(--sp-2)",
+      alignContent: "center"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: "var(--font-tag)",
+      fontSize: "var(--fs-xl)",
+      color: "var(--naranja-500)",
+      transform: "rotate(-3deg)",
+      display: "inline-block"
+    }
+  }, "\xA1Tu belleza,", /*#__PURE__*/React.createElement("br", null), "nuestra emergencia!")))));
+}
+function Horarios() {
+  return /*#__PURE__*/React.createElement("section", {
+    id: "horarios",
+    style: {
+      ...S,
+      background: "var(--negro-950)",
+      borderBlock: "1px solid var(--border-hair)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "u-container",
+    style: {
+      display: "grid",
+      gridTemplateColumns: ".9fr 1.1fr",
+      gap: "var(--sp-12)",
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "relative",
+      display: "grid",
+      placeItems: "center",
+      minHeight: 300
+    },
+    "data-aos": "fade-right"
+  }, /*#__PURE__*/React.createElement("img", {
+    src: "/assets/icon-barber-pole.png",
+    alt: "",
+    style: {
+      height: 300,
+      filter: "drop-shadow(0 0 40px rgba(46,155,240,.35))"
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: "var(--sp-6)"
+    },
+    "data-aos": "fade-left"
+  }, /*#__PURE__*/React.createElement(SectionHeading, {
+    kicker: "Horarios",
+    title: "De mi\xE9rcoles a lunes"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: "var(--sp-4)"
+    }
+  }, /*#__PURE__*/React.createElement(Card, {
+    padding: "var(--card-pad)",
+    style: {
+      display: "grid",
+      gap: "var(--sp-3)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement(Icon, {
+    name: "scissors",
+    size: 18,
+    color: "var(--naranja-500)"
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "700 var(--fs-lg)/1 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wider)",
+      color: "var(--text-strong)"
+    }
+  }, "Turnos de los barberos")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: "var(--sp-8)"
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      font: "600 var(--fs-3xs)/1.6 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wider)",
+      color: "var(--text-faint)"
+    }
+  }, "1ra jornada"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      font: "400 var(--fs-2xl)/1 var(--font-display)",
+      color: "var(--text-strong)"
+    }
+  }, "9:00 \u2014 3:00")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      font: "600 var(--fs-3xs)/1.6 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wider)",
+      color: "var(--text-faint)"
+    }
+  }, "2da jornada"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      font: "400 var(--fs-2xl)/1 var(--font-display)",
+      color: "var(--text-strong)"
+    }
+  }, "3:00 \u2014 9:00")))), /*#__PURE__*/React.createElement(Card, {
+    padding: "var(--card-pad)",
+    accent: "azul",
+    style: {
+      display: "grid",
+      gap: "var(--sp-3)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement(Icon, {
+    name: "hand-heart",
+    size: 18,
+    color: "var(--azul-neon)"
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "700 var(--fs-lg)/1 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wider)",
+      color: "var(--text-strong)"
+    }
+  }, "Turno de las masajistas")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      font: "600 var(--fs-3xs)/1.6 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wider)",
+      color: "var(--text-faint)"
+    }
+  }, "Jornada \xFAnica \xB7 una hora de descanso"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      font: "400 var(--fs-2xl)/1 var(--font-display)",
+      color: "var(--text-strong)"
+    }
+  }, "10:00 \u2014 5:00"))), /*#__PURE__*/React.createElement(Badge, {
+    tone: "ocupado"
+  }, "Martes cerrado")))));
+}
+function Resenas() {
+  const D = window.DATA_911;
+  return /*#__PURE__*/React.createElement("section", {
+    style: S
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "u-container",
+    style: {
+      display: "grid",
+      gap: "var(--sp-10)"
+    }
+  }, /*#__PURE__*/React.createElement(SectionHeading, {
+    kicker: "Lo que dicen",
+    title: "Rese\xF1as de la silla",
+    align: "center"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "repeat(3, 1fr)",
+      gap: "var(--sp-4)"
+    }
+  }, D.resenas.map((r, i) => /*#__PURE__*/React.createElement("div", {
+    key: r.a,
+    "data-aos": "fade-up",
+    "data-aos-delay": i * 80
+  }, /*#__PURE__*/React.createElement(ReviewCard, {
+    quote: r.q,
+    author: r.a,
+    meta: r.m
+  }))))));
+}
+function Faq({
+  onCta
+}) {
+  const D = window.DATA_911;
+  return /*#__PURE__*/React.createElement("section", {
+    style: {
+      ...S,
+      background: "var(--negro-950)",
+      borderTop: "1px solid var(--border-hair)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "u-container",
+    style: {
+      display: "grid",
+      gridTemplateColumns: ".8fr 1.2fr",
+      gap: "var(--sp-12)",
+      alignItems: "start"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: "var(--sp-6)",
+      justifyItems: "start",
+      position: "sticky",
+      top: 100
+    }
+  }, /*#__PURE__*/React.createElement(SectionHeading, {
+    kicker: "Preguntas",
+    title: "Antes de venir"
+  }), /*#__PURE__*/React.createElement(Button, {
+    onClick: onCta,
+    iconLeft: /*#__PURE__*/React.createElement(Icon, {
+      name: "calendar-clock",
+      size: 16
+    })
+  }, "Pedir mi turno")), /*#__PURE__*/React.createElement("div", null, D.faq.map((q, i) => /*#__PURE__*/React.createElement(FaqItem, {
+    key: q.q,
+    question: q.q,
+    answer: q.a,
+    defaultOpen: i === 0
+  })))));
+}
+Object.assign(window, {
+  Servicios,
+  Cortes,
+  Spa,
+  ComoFunciona,
+  Horarios,
+  Resenas,
+  Faq
+});
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/landing/Secciones.jsx", error: String((e && e.message) || e) }); }
+
+// ui_kits/landing/Turnos.jsx
+try { (() => {
+const {
+  SectionHeading,
+  Card,
+  Badge,
+  Button,
+  Icon,
+  Input,
+  OptionChip,
+  StepIndicator,
+  BarberCard,
+  SlotPicker,
+  QueueStatus,
+  TurnoTicket
+} = window.Ds911UrbanSalNDesignSystem_1e06a9;
+const DIAS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+
+/* El salón atiende de miércoles a lunes: se saltan los martes (getDay() === 2). */
+function proximosDias(n = 5) {
+  const out = [];
+  const d = new Date();
+  while (out.length < n) {
+    if (d.getDay() !== 2) out.push({
+      key: d.toDateString(),
+      etiqueta: DIAS[d.getDay()] + " " + d.getDate(),
+      largo: DIAS[d.getDay()] + " " + d.getDate() + " " + MESES[d.getMonth()]
+    });
+    d.setDate(d.getDate() + 1);
+  }
+  return out;
+}
+
+/* Ocupación simulada estable: misma fecha + barbero ⇒ mismas franjas tomadas. */
+function hash(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = h * 31 + s.charCodeAt(i) | 0;
+  return Math.abs(h);
+}
+function construirJornadas(fechaKey, barbero, esSpa) {
+  const gen = (desde, hasta, nombre, rango) => {
+    const slots = [];
+    for (let m = desde * 60; m < hasta * 60; m += 45) {
+      const hora = String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+      slots.push({
+        hora,
+        tomado: hash(fechaKey + barbero + hora) % 10 < 3
+      });
+    }
+    return {
+      nombre,
+      rango,
+      slots
+    };
+  };
+  return esSpa ? [gen(10, 17, "Jornada única", "10:00 a.m — 5:00 p.m")] : [gen(9, 15, "1ra jornada", "9:00 a.m — 3:00 p.m"), gen(15, 21, "2da jornada", "3:00 p.m — 9:00 p.m")];
+}
+function TurnosAsistente({
+  servicioInicial
+}) {
+  const D = window.DATA_911;
+  const dias = React.useMemo(() => proximosDias(5), []);
+  const servicios = [...D.cortes.map(c => ({
+    nombre: c.nombre,
+    dur: c.dur,
+    spa: false
+  })), ...D.spa.map(s => ({
+    nombre: s.nombre,
+    dur: s.dur,
+    spa: true
+  }))];
+  const [paso, setPaso] = React.useState(0);
+  const [servicio, setServicio] = React.useState(null);
+  const [barbero, setBarbero] = React.useState(null);
+  const [dia, setDia] = React.useState(dias[0].key);
+  const [hora, setHora] = React.useState(null);
+  const [nombre, setNombre] = React.useState("");
+  const [tel, setTel] = React.useState("");
+  const [turno, setTurno] = React.useState(null);
+  const [auto, setAuto] = React.useState(false);
+  React.useEffect(() => {
+    if (!servicioInicial) return;
+    const s = servicios.find(x => x.nombre === servicioInicial);
+    if (s) {
+      setServicio(s);
+      setPaso(1);
+      setBarbero(null);
+      setHora(null);
+    }
+  }, [servicioInicial]);
+  const esSpa = servicio ? servicio.spa : false;
+  const equipo = D.equipo.filter(p => p.rol.toLowerCase().includes("masajista") ? esSpa : !esSpa);
+  const jornadas = React.useMemo(() => construirJornadas(dia, barbero || "", esSpa), [dia, barbero, esSpa]);
+  function asignarAutomatico() {
+    const s = servicio || servicios[0];
+    const libres = D.equipo.filter(p => (p.rol.toLowerCase().includes("masajista") ? s.spa : !s.spa) && p.estado !== "ocupado");
+    const cand = libres[0] || D.equipo[0];
+    const js = construirJornadas(dias[0].key, cand.nombre, s.spa);
+    let primera = null;
+    for (const j of js) {
+      const libre = j.slots.find(x => !x.tomado);
+      if (libre) {
+        primera = libre.hora;
+        break;
+      }
+    }
+    setServicio(s);
+    setBarbero(cand.nombre);
+    setDia(dias[0].key);
+    setHora(primera);
+    setAuto(true);
+    setPaso(3);
+  }
+  function confirmar() {
+    const codigo = "A-" + String(10 + Math.floor(Math.random() * 80));
+    const d = dias.find(x => x.key === dia);
+    setTurno({
+      codigo,
+      servicio: servicio.nombre,
+      barbero,
+      fecha: d.largo,
+      hora,
+      posicion: 3
+    });
+    setPaso(4);
+  }
+  const pasos = ["Servicio", "Barbero", "Hora", "Datos"];
+  const puedeSeguir = [!!servicio, !!barbero, !!hora, nombre.trim().length > 1 && tel.trim().length > 6][paso];
+  return /*#__PURE__*/React.createElement("section", {
+    id: "turnos",
+    style: {
+      paddingBlock: "var(--section-y)",
+      position: "relative",
+      overflow: "hidden"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      inset: 0,
+      background: "radial-gradient(900px 420px at 78% 12%, rgba(15,107,180,.20), transparent 68%)"
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "u-container",
+    style: {
+      position: "relative",
+      display: "grid",
+      gap: "var(--sp-10)"
+    }
+  }, /*#__PURE__*/React.createElement(SectionHeading, {
+    kicker: "Asignaci\xF3n autom\xE1tica de turnos",
+    title: "Pide tu turno en 30 segundos",
+    description: "Dinos qu\xE9 necesitas y el sistema te da el hueco m\xE1s cercano con el barbero libre. Si prefieres, el\xEDgelo t\xFA paso a paso.",
+    align: "center"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1.55fr 1fr",
+      gap: "var(--sp-6)",
+      alignItems: "start"
+    }
+  }, /*#__PURE__*/React.createElement(Card, {
+    padding: "var(--card-pad-lg)",
+    accent: "azul",
+    style: {
+      display: "grid",
+      gap: "var(--sp-6)",
+      minHeight: 470,
+      alignContent: "start"
+    }
+  }, paso < 4 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: "var(--sp-4)",
+      flexWrap: "wrap"
+    }
+  }, /*#__PURE__*/React.createElement(StepIndicator, {
+    steps: pasos,
+    current: paso
+  }), /*#__PURE__*/React.createElement(Button, {
+    size: "sm",
+    variant: "ghost",
+    onClick: asignarAutomatico,
+    iconLeft: /*#__PURE__*/React.createElement(Icon, {
+      name: "zap",
+      size: 15
+    })
+  }, "Asignar por m\xED")), paso === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: "var(--sp-4)"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "600 var(--fs-2xs)/1 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wider)",
+      color: "var(--text-muted)"
+    }
+  }, "\xBFQu\xE9 te vas a hacer?"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: "var(--sp-2)"
+    }
+  }, servicios.map(s => /*#__PURE__*/React.createElement(OptionChip, {
+    key: s.nombre,
+    selected: servicio && servicio.nombre === s.nombre,
+    onClick: () => {
+      setServicio(s);
+      setBarbero(null);
+      setHora(null);
+    }
+  }, s.nombre, " \xB7 ", s.dur)))), paso === 1 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: "var(--sp-3)"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "600 var(--fs-2xs)/1 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wider)",
+      color: "var(--text-muted)"
+    }
+  }, "\xBFCon qui\xE9n?"), equipo.map(p => /*#__PURE__*/React.createElement(BarberCard, {
+    key: p.nombre,
+    name: p.nombre,
+    role: p.rol,
+    estado: p.estado,
+    nextSlot: p.proximo,
+    specialty: p.especialidad,
+    selected: barbero === p.nombre,
+    onClick: () => {
+      if (p.estado !== "ocupado") {
+        setBarbero(p.nombre);
+        setHora(null);
+      }
+    }
+  }))), paso === 2 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: "var(--sp-5)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: "var(--sp-3)"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "600 var(--fs-2xs)/1 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wider)",
+      color: "var(--text-muted)"
+    }
+  }, "D\xEDa"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: "var(--sp-2)",
+      flexWrap: "wrap"
+    }
+  }, dias.map(d => /*#__PURE__*/React.createElement(OptionChip, {
+    key: d.key,
+    accent: "azul",
+    selected: dia === d.key,
+    onClick: () => {
+      setDia(d.key);
+      setHora(null);
+    }
+  }, d.etiqueta)))), /*#__PURE__*/React.createElement(SlotPicker, {
+    jornadas: jornadas,
+    value: hora,
+    onChange: setHora
+  })), paso === 3 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: "var(--sp-4)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: "var(--sp-4)"
+    }
+  }, /*#__PURE__*/React.createElement(Input, {
+    label: "Tu nombre",
+    placeholder: "Como te llaman",
+    value: nombre,
+    onChange: e => setNombre(e.target.value),
+    icon: /*#__PURE__*/React.createElement(Icon, {
+      name: "user-round",
+      size: 16
+    })
+  }), /*#__PURE__*/React.createElement(Input, {
+    label: "WhatsApp",
+    placeholder: "300 000 0000",
+    value: tel,
+    onChange: e => setTel(e.target.value),
+    icon: /*#__PURE__*/React.createElement(Icon, {
+      name: "phone",
+      size: 16
+    }),
+    hint: "Ah\xED te llega la confirmaci\xF3n"
+  })), auto && /*#__PURE__*/React.createElement(Badge, {
+    tone: "azul",
+    dot: true
+  }, "Turno asignado autom\xE1ticamente: el hueco m\xE1s cercano"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: "var(--sp-2)",
+      background: "var(--surface-raised)",
+      border: "1px solid var(--border-hair)",
+      borderRadius: "var(--radius-sm)",
+      padding: "var(--sp-4)"
+    }
+  }, [["Servicio", servicio && servicio.nombre], ["Barbero", barbero], ["Día", (dias.find(d => d.key === dia) || {}).largo], ["Hora", hora]].map(([k, v]) => /*#__PURE__*/React.createElement("div", {
+    key: k,
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      gap: "var(--sp-4)"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "600 var(--fs-2xs)/1.5 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wider)",
+      color: "var(--text-faint)"
+    }
+  }, k), /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "700 var(--fs-sm)/1.5 var(--font-condensed)",
+      textTransform: "uppercase",
+      color: "var(--text-strong)"
+    }
+  }, v || "—"))))), paso === 4 && turno && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: "var(--sp-5)",
+      justifyItems: "center",
+      textAlign: "center"
+    }
+  }, /*#__PURE__*/React.createElement(Badge, {
+    tone: "libre",
+    dot: true
+  }, "Turno confirmado"), /*#__PURE__*/React.createElement(TurnoTicket, turno), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: "var(--sp-3)"
+    }
+  }, /*#__PURE__*/React.createElement(Button, {
+    variant: "secondary",
+    as: "a",
+    href: "https://wa.me/" + D.telefono,
+    iconLeft: /*#__PURE__*/React.createElement(Icon, {
+      name: "message-circle",
+      size: 16
+    })
+  }, "Enviar por WhatsApp"), /*#__PURE__*/React.createElement(Button, {
+    variant: "ghost",
+    onClick: () => {
+      setPaso(0);
+      setTurno(null);
+      setServicio(null);
+      setBarbero(null);
+      setHora(null);
+      setAuto(false);
+    }
+  }, "Pedir otro"))), paso < 4 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: "var(--sp-3)",
+      marginTop: "auto",
+      paddingTop: "var(--sp-2)"
+    }
+  }, paso > 0 && /*#__PURE__*/React.createElement(Button, {
+    variant: "outline",
+    onClick: () => setPaso(p => p - 1)
+  }, "Atr\xE1s"), paso < 3 ? /*#__PURE__*/React.createElement(Button, {
+    disabled: !puedeSeguir,
+    onClick: () => setPaso(p => p + 1),
+    iconRight: /*#__PURE__*/React.createElement(Icon, {
+      name: "arrow-right",
+      size: 16
+    })
+  }, "Continuar") : /*#__PURE__*/React.createElement(Button, {
+    disabled: !puedeSeguir,
+    onClick: confirmar,
+    iconRight: /*#__PURE__*/React.createElement(Icon, {
+      name: "check",
+      size: 16
+    })
+  }, "Confirmar turno"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: "var(--sp-4)"
+    }
+  }, /*#__PURE__*/React.createElement(QueueStatus, {
+    enAtencion: "A-014",
+    esperaMin: 25,
+    enEspera: [{
+      codigo: "A-015",
+      servicio: "Skin fade"
+    }, {
+      codigo: "A-016",
+      servicio: "Barba"
+    }, {
+      codigo: "A-017",
+      servicio: "Masaje facial"
+    }]
+  }), /*#__PURE__*/React.createElement(Card, {
+    padding: "var(--card-pad)",
+    style: {
+      display: "grid",
+      gap: "var(--sp-3)"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "u-kicker"
+  }, "C\xF3mo funciona"), [["zap", "El sistema busca el primer hueco libre del barbero que elijas."], ["ticket", "Te asigna un código de turno y te lo manda por WhatsApp."], ["clock", "Llega 5 minutos antes: el turno se libera a los 10."]].map(([ic, t]) => /*#__PURE__*/React.createElement("div", {
+    key: t,
+    style: {
+      display: "flex",
+      gap: "var(--sp-3)",
+      alignItems: "flex-start"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "var(--naranja-500)",
+      marginTop: 2
+    }
+  }, /*#__PURE__*/React.createElement(Icon, {
+    name: ic,
+    size: 16
+  })), /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "var(--type-small)",
+      color: "var(--text-muted)"
+    }
+  }, t))))))));
+}
+function Equipo({
+  onPedir
+}) {
+  const D = window.DATA_911;
+  return /*#__PURE__*/React.createElement("section", {
+    id: "equipo",
+    style: {
+      paddingBlock: "var(--section-y)",
+      background: "var(--negro-950)",
+      borderBlock: "1px solid var(--border-hair)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "u-container",
+    style: {
+      display: "grid",
+      gap: "var(--sp-10)"
+    }
+  }, /*#__PURE__*/React.createElement(SectionHeading, {
+    kicker: "El equipo",
+    title: "Qui\xE9n te atiende hoy",
+    description: "Disponibilidad en vivo. Si aparece en verde, tiene silla libre ahora."
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: "var(--sp-4)"
+    }
+  }, D.equipo.map((p, i) => /*#__PURE__*/React.createElement("div", {
+    key: p.nombre,
+    "data-aos": "fade-up",
+    "data-aos-delay": i * 70
+  }, /*#__PURE__*/React.createElement(BarberCard, {
+    name: p.nombre,
+    role: p.rol,
+    estado: p.estado,
+    nextSlot: p.proximo,
+    specialty: p.especialidad,
+    onClick: () => onPedir(null)
+  }))))));
+}
+Object.assign(window, {
+  TurnosAsistente,
+  Equipo
+});
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/landing/Turnos.jsx", error: String((e && e.message) || e) }); }
+
+// ui_kits/landing/datos.js
+try { (() => {
+/* Datos de contenido de la landing de 911 Urban Salón.
+   Textos tomados de los flyers reales (/assets/source/). Los PRECIOS, el
+   teléfono y la dirección son marcadores de posición: reemplázalos por los
+   reales antes de publicar. */
+window.DATA_911 = {
+  telefono: "573000000000",
+  direccion: "Reemplazar por la dirección real",
+  categorias: [{
+    icon: "scissors",
+    titulo: "Estilos de corte",
+    texto: "Fades, texturizados y clásicos ejecutados con línea limpia."
+  }, {
+    icon: "sparkles",
+    titulo: "Tipos de faciales",
+    texto: "Limpieza facial para hombres en siete pasos."
+  }, {
+    icon: "hand-heart",
+    titulo: "Tipos de masajes",
+    texto: "Spa de pies, piedras calientes, facial y masoterapia."
+  }, {
+    icon: "spray-can",
+    titulo: "Estilos de afeitado",
+    texto: "Toalla caliente, navaja y perfilado de barba."
+  }],
+  cortes: [{
+    img: "skin-fade",
+    nombre: "Skin fade",
+    desc: "Degradado a piel con línea marcada.",
+    precio: "$35.000",
+    dur: "45 min",
+    badge: "Más pedido"
+  }, {
+    img: "wolf-cut",
+    nombre: "Wolf cut",
+    desc: "Capas desconectadas y volumen arriba.",
+    precio: "$42.000",
+    dur: "60 min"
+  }, {
+    img: "crop-texturizado",
+    nombre: "Crop texturizado",
+    desc: "Flequillo corto con textura y desvanecido.",
+    precio: "$35.000",
+    dur: "45 min"
+  }, {
+    img: "fade-texturizado",
+    nombre: "Fade texturizado",
+    desc: "Fade medio con acabado desordenado.",
+    precio: "$38.000",
+    dur: "50 min"
+  }],
+  spa: [{
+    icon: "footprints",
+    nombre: "Spa de pies",
+    desc: "Limpieza, higienización e hidratación.",
+    precio: "$45.000",
+    dur: "50 min"
+  }, {
+    icon: "flame",
+    nombre: "Masaje relajante",
+    desc: "Con piedras calientes.",
+    precio: "$70.000",
+    dur: "60 min"
+  }, {
+    icon: "smile",
+    nombre: "Masaje facial",
+    desc: "Limpieza e hidratación.",
+    precio: "$40.000",
+    dur: "40 min"
+  }, {
+    icon: "waves",
+    nombre: "Masoterapia",
+    desc: "Técnicas terapéuticas para alivio de dolores, estrés y bienestar general.",
+    precio: "$80.000",
+    dur: "75 min"
+  }],
+  facial: ["Limpieza", "Exfoliación", "Vaporización", "Extracción de comedones", "Mascarilla", "Masaje facial", "Hidratación y protección"],
+  equipo: [{
+    nombre: "Kevin R.",
+    rol: "Barbero senior",
+    especialidad: "Fades y diseños a navaja",
+    estado: "libre",
+    proximo: "11:30"
+  }, {
+    nombre: "Duvan S.",
+    rol: "Barbero",
+    especialidad: "Clásicos y perfilado de barba",
+    estado: "turno",
+    proximo: "14:00"
+  }, {
+    nombre: "Laura P.",
+    rol: "Masajista",
+    especialidad: "Piedras calientes y masoterapia",
+    estado: "libre",
+    proximo: "10:00"
+  }, {
+    nombre: "Mateo G.",
+    rol: "Barbero junior",
+    especialidad: "Crop y texturizados",
+    estado: "ocupado"
+  }],
+  flujo: [{
+    n: "1",
+    t: "Saludo y bienvenida",
+    d: "Se recibe al cliente cordialmente y se le ofrece una experiencia profesional."
+  }, {
+    n: "2",
+    t: "Consulta",
+    d: "Se escucha al cliente para conocer sus necesidades y el estilo deseado."
+  }, {
+    n: "3",
+    t: "Asesoría",
+    d: "Se recomienda el mejor servicio o corte según el tipo de cabello, rostro y preferencias."
+  }, {
+    n: "4",
+    t: "Prestación del servicio",
+    d: "Se realiza el servicio acordado con calidad, higiene y atención personalizada."
+  }, {
+    n: "5",
+    t: "Revisión y satisfacción",
+    d: "Se muestra el resultado al cliente y se asegura su satisfacción."
+  }, {
+    n: "6",
+    t: "Pago",
+    d: "Se realiza el cobro del servicio de barbería o spa de forma rápida y segura."
+  }, {
+    n: "7",
+    t: "Despedida y fidelización",
+    d: "Se agradece la visita, se invita a volver y se recomiendan paquetes y promociones."
+  }],
+  resenas: [{
+    q: "Pedí el turno desde el celular y entré sin esperar. El fade quedó impecable.",
+    a: "Andrés M.",
+    m: "Skin fade · marzo"
+  }, {
+    q: "El masaje con piedras calientes vale cada peso. Salí nuevo.",
+    a: "Carolina T.",
+    m: "Masaje relajante · abril"
+  }, {
+    q: "Me asesoraron el corte según mi tipo de cara. Nunca me habían explicado eso.",
+    a: "Julián V.",
+    m: "Crop texturizado · abril"
+  }],
+  faq: [{
+    q: "¿Necesito cita?",
+    a: "No es obligatoria, pero con turno asignado entras sin esperar. El sistema te da el próximo hueco libre del barbero que elijas."
+  }, {
+    q: "¿Qué días atienden?",
+    a: "De miércoles a lunes. Los barberos trabajan en dos jornadas: 9:00 a.m — 3:00 p.m y 3:00 p.m — 9:00 p.m. Las masajistas atienden de 10:00 a.m a 5:00 p.m."
+  }, {
+    q: "¿Puedo cancelar o mover mi turno?",
+    a: "Sí. Con el código de tu turno escríbenos por WhatsApp y lo movemos al siguiente hueco disponible del mismo barbero."
+  }, {
+    q: "¿Atienden mujeres y niños?",
+    a: "Sí. La carta de cortes, faciales y masajes está abierta a todo público."
+  }]
+};
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/landing/datos.js", error: String((e && e.message) || e) }); }
+
+// ui_kits/turnos/Panel.jsx
+try { (() => {
+const {
+  Card,
+  Badge,
+  Button,
+  Icon,
+  StepIndicator,
+  BarberCard,
+  QueueStatus,
+  TurnoTicket
+} = window.Ds911UrbanSalNDesignSystem_1e06a9;
+const COLA_INICIAL = [{
+  codigo: "A-015",
+  cliente: "Andrés M.",
+  servicio: "Skin fade",
+  barbero: "Kevin R.",
+  hora: "10:30",
+  estado: "espera"
+}, {
+  codigo: "A-016",
+  cliente: "Julián V.",
+  servicio: "Barba",
+  barbero: "Duvan S.",
+  hora: "10:45",
+  estado: "espera"
+}, {
+  codigo: "A-017",
+  cliente: "Carolina T.",
+  servicio: "Masaje facial",
+  barbero: "Laura P.",
+  hora: "11:00",
+  estado: "espera"
+}, {
+  codigo: "A-018",
+  cliente: "Sebastián R.",
+  servicio: "Crop texturizado",
+  barbero: "Kevin R.",
+  hora: "11:15",
+  estado: "espera"
+}];
+function Sala({
+  enSilla,
+  cola
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1.1fr .9fr",
+      gap: "var(--sp-6)",
+      minHeight: 520
+    }
+  }, /*#__PURE__*/React.createElement(Card, {
+    padding: "var(--card-pad-lg)",
+    accent: "azul",
+    style: {
+      display: "grid",
+      placeContent: "center",
+      justifyItems: "center",
+      gap: "var(--sp-4)",
+      position: "relative",
+      overflow: "hidden"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      inset: 0,
+      background: "radial-gradient(600px 300px at 50% 0%, rgba(46,155,240,.18), transparent 70%)"
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      position: "relative",
+      font: "600 var(--fs-2xs)/1 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-widest)",
+      color: "var(--ambar-500)"
+    }
+  }, "Atendiendo ahora"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      position: "relative",
+      font: "400 var(--fs-7xl)/1 var(--font-display)",
+      color: "var(--text-strong)",
+      letterSpacing: "var(--ls-tight)"
+    }
+  }, enSilla ? enSilla.codigo : "—"), enSilla && /*#__PURE__*/React.createElement("span", {
+    style: {
+      position: "relative",
+      font: "700 var(--fs-xl)/1 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wide)",
+      color: "var(--naranja-500)"
+    }
+  }, enSilla.servicio, " \xB7 ", enSilla.barbero), /*#__PURE__*/React.createElement("img", {
+    src: "/assets/logo-911-urban-salon-dark.png",
+    alt: "",
+    style: {
+      position: "relative",
+      height: 120,
+      marginTop: "var(--sp-6)",
+      opacity: .9
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: "var(--sp-4)",
+      alignContent: "start"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "u-kicker"
+  }, "Siguen en la fila"), cola.filter(t => t.estado === "espera").map((t, i) => /*#__PURE__*/React.createElement(Card, {
+    key: t.codigo,
+    padding: "var(--sp-4)",
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: "var(--sp-4)"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "400 var(--fs-2xl)/1 var(--font-display)",
+      color: "var(--text-faint)",
+      width: 34
+    }
+  }, String(i + 1).padStart(2, "0")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: 2,
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "700 var(--fs-xl)/1 var(--font-mono)",
+      color: "var(--azul-neon)",
+      letterSpacing: "var(--ls-wide)"
+    }
+  }, t.codigo), /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "var(--type-small)",
+      color: "var(--text-muted)"
+    }
+  }, t.servicio, " \xB7 ", t.barbero)), /*#__PURE__*/React.createElement(Badge, {
+    tone: "neutro"
+  }, t.hora)))));
+}
+function PanelBarbero({
+  cola,
+  enSilla,
+  llamar,
+  terminar
+}) {
+  const D = window.DATA_911;
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1.4fr 1fr",
+      gap: "var(--sp-6)",
+      alignItems: "start"
+    }
+  }, /*#__PURE__*/React.createElement(Card, {
+    padding: "var(--card-pad-lg)",
+    style: {
+      display: "grid",
+      gap: "var(--sp-5)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: "var(--sp-4)"
+    }
+  }, /*#__PURE__*/React.createElement("h3", {
+    style: {
+      margin: 0,
+      font: "700 var(--fs-xl)/1 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wider)",
+      color: "var(--text-strong)"
+    }
+  }, "Cola de hoy"), /*#__PURE__*/React.createElement(Badge, {
+    tone: "turno",
+    dot: true
+  }, cola.filter(t => t.estado === "espera").length, " en espera")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: "var(--sp-2)"
+    }
+  }, cola.map(t => /*#__PURE__*/React.createElement("div", {
+    key: t.codigo,
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: "var(--sp-4)",
+      padding: "var(--sp-3) var(--sp-4)",
+      background: t.estado === "silla" ? "var(--surface-accent-soft)" : "var(--surface-raised)",
+      border: "1px solid " + (t.estado === "silla" ? "rgba(240,122,40,.45)" : "var(--border-hair)"),
+      borderRadius: "var(--radius-sm)",
+      opacity: t.estado === "listo" ? .45 : 1
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "700 var(--fs-lg)/1 var(--font-mono)",
+      color: t.estado === "silla" ? "var(--naranja-500)" : "var(--azul-neon)",
+      width: 66
+    }
+  }, t.codigo), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: 1,
+      flex: 1,
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "700 var(--fs-sm)/1.3 var(--font-condensed)",
+      textTransform: "uppercase",
+      letterSpacing: "var(--ls-wide)",
+      color: "var(--text-strong)"
+    }
+  }, t.cliente), /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "var(--fw-regular) var(--fs-2xs)/1.4 var(--font-body)",
+      color: "var(--text-faint)"
+    }
+  }, t.servicio, " \xB7 ", t.barbero, " \xB7 ", t.hora)), t.estado === "espera" && /*#__PURE__*/React.createElement(Button, {
+    size: "sm",
+    variant: "outline",
+    onClick: () => llamar(t.codigo)
+  }, "Llamar"), t.estado === "silla" && /*#__PURE__*/React.createElement(Button, {
+    size: "sm",
+    onClick: () => terminar(t.codigo),
+    iconLeft: /*#__PURE__*/React.createElement(Icon, {
+      name: "check",
+      size: 14
+    })
+  }, "Terminar"), t.estado === "listo" && /*#__PURE__*/React.createElement(Badge, {
+    tone: "libre"
+  }, "Atendido"))))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: "var(--sp-4)"
+    }
+  }, enSilla ? /*#__PURE__*/React.createElement(TurnoTicket, {
+    codigo: enSilla.codigo,
+    servicio: enSilla.servicio,
+    barbero: enSilla.barbero,
+    hora: enSilla.hora,
+    fecha: "Hoy"
+  }) : /*#__PURE__*/React.createElement(Card, {
+    padding: "var(--card-pad)",
+    style: {
+      display: "grid",
+      gap: 8,
+      justifyItems: "center",
+      textAlign: "center"
+    }
+  }, /*#__PURE__*/React.createElement(Icon, {
+    name: "armchair",
+    size: 28,
+    color: "var(--text-faint)"
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      font: "var(--type-small)",
+      color: "var(--text-muted)"
+    }
+  }, "Silla libre. Llama al siguiente turno.")), /*#__PURE__*/React.createElement(Card, {
+    padding: "var(--card-pad)",
+    style: {
+      display: "grid",
+      gap: "var(--sp-3)"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "u-kicker"
+  }, "Equipo en turno"), D.equipo.map(p => /*#__PURE__*/React.createElement(BarberCard, {
+    key: p.nombre,
+    name: p.nombre,
+    role: p.rol,
+    estado: p.estado,
+    nextSlot: p.proximo
+  })))));
+}
+function AppTurnos() {
+  const [vista, setVista] = React.useState("sala");
+  const [cola, setCola] = React.useState(() => [{
+    codigo: "A-014",
+    cliente: "Mateo L.",
+    servicio: "Fade texturizado",
+    barbero: "Kevin R.",
+    hora: "10:00",
+    estado: "silla"
+  }, ...COLA_INICIAL]);
+  React.useEffect(() => {
+    if (window.lucide) window.lucide.createIcons({
+      nameAttr: "data-lucide"
+    });
+  });
+  const enSilla = cola.find(t => t.estado === "silla");
+  const llamar = c => setCola(q => q.map(t => t.codigo === c ? {
+    ...t,
+    estado: "silla"
+  } : t.estado === "silla" ? {
+    ...t,
+    estado: "listo"
+  } : t));
+  const terminar = c => setCola(q => q.map(t => t.codigo === c ? {
+    ...t,
+    estado: "listo"
+  } : t));
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      minHeight: "100vh",
+      background: "var(--surface-page)"
+    }
+  }, /*#__PURE__*/React.createElement("header", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: "var(--sp-6)",
+      padding: "12px var(--gutter)",
+      borderBottom: "1px solid var(--border-hair)",
+      position: "sticky",
+      top: 0,
+      background: "rgba(10,10,11,.9)",
+      backdropFilter: "blur(14px)",
+      zIndex: 10
+    }
+  }, /*#__PURE__*/React.createElement("img", {
+    src: "/assets/logo-911-urban-salon-dark.png",
+    alt: "911 Urban Sal\xF3n",
+    style: {
+      height: 44
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: "var(--sp-2)",
+      marginLeft: "auto"
+    }
+  }, /*#__PURE__*/React.createElement(Button, {
+    size: "sm",
+    variant: vista === "sala" ? "primary" : "ghost",
+    onClick: () => setVista("sala")
+  }, "Pantalla de sala"), /*#__PURE__*/React.createElement(Button, {
+    size: "sm",
+    variant: vista === "panel" ? "primary" : "ghost",
+    onClick: () => setVista("panel")
+  }, "Panel del barbero"))), /*#__PURE__*/React.createElement("main", {
+    className: "u-container",
+    style: {
+      paddingBlock: "var(--sp-8)"
+    }
+  }, vista === "sala" ? /*#__PURE__*/React.createElement(Sala, {
+    enSilla: enSilla,
+    cola: cola
+  }) : /*#__PURE__*/React.createElement(PanelBarbero, {
+    cola: cola,
+    enSilla: enSilla,
+    llamar: llamar,
+    terminar: terminar
+  })));
+}
+Object.assign(window, {
+  AppTurnos
+});
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/turnos/Panel.jsx", error: String((e && e.message) || e) }); }
+
+})();
+
+</script>
+<!-- ══ Datos de contenido (compartidos con la landing) ══ -->
+<script>
+/* Datos de contenido de la landing de 911 Urban Salón.
+   Textos tomados de los flyers reales (assets/source/). Los PRECIOS, el
+   teléfono y la dirección son marcadores de posición: reemplázalos por los
+   reales antes de publicar. */
+window.DATA_911 = {
+  telefono: "573205042058",
+  direccion: "Reemplazar por la dirección real",
+  categorias: [
+    { icon: "scissors", titulo: "Estilos de corte", texto: "Cualquier corte: $50.000 · Trenzas: $100.000 · Tintura: $150.000." },
+    { icon: "sparkles", titulo: "Tipos de faciales", texto: "Limpieza facial para hombres en siete pasos." },
+    { icon: "hand-heart", titulo: "Tipos de masajes", texto: "Spa de pies, piedras calientes, facial y masoterapia. Sesión: $150.000." },
+    { icon: "spray-can", titulo: "Estilos de afeitado", texto: "Toalla caliente, navaja y perfilado de barba. Afeitado: $70.000." }
+  ],
+  cortes: [
+    { img: "skin-fade", nombre: "Skin fade", desc: "Degradado a piel con línea marcada.", precio: "$50.000", dur: "45 min", badge: "Más pedido" },
+    { img: "wolf-cut", nombre: "Wolf cut", desc: "Capas desconectadas y volumen arriba.", precio: "$50.000", dur: "60 min" },
+    { img: "crop-texturizado", nombre: "Crop texturizado", desc: "Flequillo corto con textura y desvanecido.", precio: "$50.000", dur: "45 min" },
+    { img: "fade-texturizado", nombre: "Fade texturizado", desc: "Fade medio con acabado desordenado.", precio: "$50.000", dur: "50 min" }
+  ],
+  spa: [
+    { icon: "footprints", nombre: "Spa de pies", desc: "Limpieza, higienización e hidratación.", precio: "$150.000", dur: "50 min" },
+    { icon: "flame", nombre: "Masaje relajante", desc: "Con piedras calientes.", precio: "$150.000", dur: "60 min" },
+    { icon: "smile", nombre: "Masaje facial", desc: "Limpieza e hidratación.", precio: "$150.000", dur: "40 min" },
+    { icon: "waves", nombre: "Masoterapia", desc: "Técnicas terapéuticas para alivio de dolores, estrés y bienestar general.", precio: "$150.000", dur: "75 min" }
+  ],
+  barberia: [
+    { nombre: "Trenzas", dur: "90 min", precio: "$100.000" },
+    { nombre: "Tintura", dur: "90 min", precio: "$150.000" },
+    { nombre: "Afeitado clásico", dur: "30 min", precio: "$70.000" }
+  ],
+  facial: ["Limpieza", "Exfoliación", "Vaporización", "Extracción de comedones", "Mascarilla", "Masaje facial", "Hidratación y protección"],
+  equipo: [
+    { nombre: "Samuel", rol: "Barbero", especialidad: "Fades y cortes clásicos", estado: "libre", proximo: "11:30" },
+    { nombre: "Mateo", rol: "Barbero", especialidad: "Crop y texturizados", estado: "turno", proximo: "14:00" },
+    { nombre: "Julián", rol: "Barbero", especialidad: "Trenzas y tintura", estado: "libre", proximo: "10:30" },
+    { nombre: "Masajista por confirmar", rol: "Masajista", especialidad: "Piedras calientes y masoterapia", estado: "libre", proximo: "10:00" }
+  ],
+  flujo: [
+    { n: "1", t: "Saludo y bienvenida", d: "Se recibe al cliente cordialmente y se le ofrece una experiencia profesional." },
+    { n: "2", t: "Consulta", d: "Se escucha al cliente para conocer sus necesidades y el estilo deseado." },
+    { n: "3", t: "Asesoría", d: "Se recomienda el mejor servicio o corte según el tipo de cabello, rostro y preferencias." },
+    { n: "4", t: "Prestación del servicio", d: "Se realiza el servicio acordado con calidad, higiene y atención personalizada." },
+    { n: "5", t: "Revisión y satisfacción", d: "Se muestra el resultado al cliente y se asegura su satisfacción." },
+    { n: "6", t: "Pago", d: "Se realiza el cobro del servicio de barbería o spa de forma rápida y segura." },
+    { n: "7", t: "Despedida y fidelización", d: "Se agradece la visita, se invita a volver y se recomiendan paquetes y promociones." }
+  ],
+  resenas: [
+    { q: "Pedí el turno desde el celular y entré sin esperar. El fade quedó impecable.", a: "Andrés M.", m: "Skin fade · marzo" },
+    { q: "El masaje con piedras calientes vale cada peso. Salí nuevo.", a: "Carolina T.", m: "Masaje relajante · abril" },
+    { q: "Me asesoraron el corte según mi tipo de cara. Nunca me habían explicado eso.", a: "Julián V.", m: "Crop texturizado · abril" }
+  ],
+  faq: [
+    { q: "¿Necesito cita?", a: "No es obligatoria, pero con turno asignado entras sin esperar. El sistema te da el próximo hueco libre del barbero que elijas." },
+    { q: "¿Qué días atienden?", a: "De miércoles a lunes. Los barberos trabajan en dos jornadas: 9:00 a.m — 3:00 p.m y 3:00 p.m — 9:00 p.m. Las masajistas atienden de 10:00 a.m a 5:00 p.m." },
+    { q: "¿Puedo cancelar o mover mi turno?", a: "Sí. Con el código de tu turno escríbenos por WhatsApp y lo movemos al siguiente hueco disponible del mismo barbero." },
+    { q: "¿Atienden mujeres y niños?", a: "Sí. La carta de cortes, faciales y masajes está abierta a todo público." }
+  ]
+};
+</script>
+<!-- ══ Panel administrativo: login + sala + cola + carta editable ══ -->
+<script type="text/babel" data-presets="react">
+const { Card, Badge, Button, Icon, Input, StepIndicator, BarberCard, QueueStatus, TurnoTicket } = window.Ds911UrbanSalNDesignSystem_1e06a9;
+
+/* ── Acceso ──
+   Credenciales iniciales: usuario "admin", contraseña "911urban".
+   Se guarda solo el SHA-256 de "usuario:contraseña"; para cambiarlas,
+   reemplaza HASH_ACCESO por el hash de la nueva pareja.
+   OJO: en un sitio estático esto disuade el acceso casual, no es
+   seguridad de servidor. */
+const HASH_ACCESO = "27993573de460ecd9bb06a3027d34a3005f2c494dc06934d23fb0dc3877cf2a8";
+const SESION = "turnos911_auth";
+const CLAVE_NOMBRES = "turnos911_equipo";
+
+async function sha256(texto) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(texto));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+function LoginGate({ onOk }) {
+  const [usuario, setUsuario] = React.useState("");
+  const [clave, setClave] = React.useState("");
+  const [error, setError] = React.useState(false);
+  async function entrar(e) {
+    e.preventDefault();
+    if (await sha256(usuario.trim() + ":" + clave) === HASH_ACCESO) {
+      sessionStorage.setItem(SESION, "ok"); onOk();
+    } else setError(true);
+  }
+  return (
+    <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "var(--surface-page)", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", inset: 0, background: "url('/assets/texture-graffiti-black.jpeg') center/cover", opacity: .14 }} />
+      <form onSubmit={entrar} style={{ position: "relative", width: "min(380px, 90vw)" }}>
+        <Card padding="var(--card-pad-lg)" accent="azul" style={{ display: "grid", gap: "var(--sp-5)", justifyItems: "center" }}>
+          <img src="/assets/logo-911-urban-salon-dark.png" alt="911 Urban Salón" style={{ height: 110 }} />
+          <div style={{ display: "grid", gap: 4, justifyItems: "center" }}>
+            <span className="u-kicker">Administración de turnos</span>
+            <h3 style={{ margin: 0, font: "400 var(--fs-2xl)/1 var(--font-display)", textTransform: "uppercase", color: "var(--text-strong)" }}>Solo el equipo</h3>
+          </div>
+          <div style={{ display: "grid", gap: "var(--sp-3)", width: "100%" }}>
+            <Input label="Usuario" placeholder="Usuario" value={usuario} onChange={e => { setUsuario(e.target.value); setError(false); }} icon={<Icon name="user-round" size={16} />} />
+            <Input label="Contraseña" type="password" placeholder="••••••••" value={clave} onChange={e => { setClave(e.target.value); setError(false); }} icon={<Icon name="lock" size={16} />} />
+          </div>
+          {error && <Badge tone="ocupado" dot>Usuario o contraseña incorrectos</Badge>}
+          <Button type="submit" style={{ width: "100%" }} iconLeft={<Icon name="log-in" size={16} />}>Entrar</Button>
+        </Card>
+      </form>
+    </div>
+  );
+}
+
+/* ── Datos de la cola del día (demo en memoria) ── */
+const COLA_INICIAL = [
+  { codigo: "A-015", cliente: "Andrés M.", servicio: "Skin fade", barbero: "Samuel", hora: "10:30", estado: "espera" },
+  { codigo: "A-016", cliente: "Sebastián R.", servicio: "Afeitado clásico", barbero: "Mateo", hora: "10:45", estado: "espera" },
+  { codigo: "A-017", cliente: "Julián V.", servicio: "Trenzas", barbero: "Julián", hora: "11:00", estado: "espera" },
+  { codigo: "A-018", cliente: "Carolina T.", servicio: "Masaje facial", barbero: "Masajista por confirmar", hora: "11:15", estado: "espera" }
+];
+
+const aMin = h => { const [H, M] = h.split(":").map(Number); return H * 60 + M; };
+const aHora = m => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+
+function HoraCita({ t }) {
+  const corrida = t.horaOriginal && t.horaOriginal !== t.hora;
+  if (!corrida) return <Badge tone="neutro">{t.hora}</Badge>;
+  return <Badge tone="turno"><s style={{ opacity: .6, marginRight: 6 }}>{t.horaOriginal}</s>{t.hora}</Badge>;
+}
+
+function Sala({ enSilla, cola, retraso }) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1.1fr .9fr", gap: "var(--sp-6)", minHeight: 520 }}>
+      <Card padding="var(--card-pad-lg)" accent="azul" style={{ display: "grid", placeContent: "center", justifyItems: "center", gap: "var(--sp-4)", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(600px 300px at 50% 0%, rgba(46,155,240,.18), transparent 70%)" }} />
+        <span style={{ position: "relative", font: "600 var(--fs-2xs)/1 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-widest)", color: "var(--ambar-500)" }}>Atendiendo ahora</span>
+        <span style={{ position: "relative", font: "400 var(--fs-7xl)/1 var(--font-display)", color: "var(--text-strong)", letterSpacing: "var(--ls-tight)" }}>{enSilla ? enSilla.codigo : "—"}</span>
+        {enSilla && <span style={{ position: "relative", font: "700 var(--fs-xl)/1 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wide)", color: "var(--naranja-500)" }}>{enSilla.servicio} · {enSilla.barbero}</span>}
+        {retraso > 0 && <Badge tone="turno" dot>Citas corridas +{retraso} min</Badge>}
+        <img src="/assets/logo-911-urban-salon-dark.png" alt="" style={{ position: "relative", height: 120, marginTop: "var(--sp-6)", opacity: .9 }} />
+      </Card>
+      <div style={{ display: "grid", gap: "var(--sp-4)", alignContent: "start" }}>
+        <span className="u-kicker">Siguen en la fila</span>
+        {cola.filter(t => t.estado === "espera").map((t, i) => (
+          <Card key={t.codigo} padding="var(--sp-4)" style={{ display: "flex", alignItems: "center", gap: "var(--sp-4)" }}>
+            <span style={{ font: "400 var(--fs-2xl)/1 var(--font-display)", color: "var(--text-faint)", width: 34 }}>{String(i + 1).padStart(2, "0")}</span>
+            <div style={{ display: "grid", gap: 2, flex: 1 }}>
+              <span style={{ font: "700 var(--fs-xl)/1 var(--font-mono)", color: "var(--azul-neon)", letterSpacing: "var(--ls-wide)" }}>{t.codigo}</span>
+              <span style={{ font: "var(--type-small)", color: "var(--text-muted)" }}>{t.servicio} · {t.barbero}</span>
+            </div>
+            <HoraCita t={t} />
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* Equipo con nombres editables (se guardan en este navegador). */
+function EquipoAdmin({ equipo, renombrar }) {
+  const [editando, setEditando] = React.useState(null);
+  const [nombre, setNombre] = React.useState("");
+  function guardar(e) {
+    e.preventDefault();
+    if (nombre.trim().length > 1) { renombrar(editando, nombre.trim()); setEditando(null); }
+  }
+  return (
+    <Card padding="var(--card-pad)" style={{ display: "grid", gap: "var(--sp-3)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span className="u-kicker">Equipo en turno</span>
+        <span style={{ font: "var(--fw-regular) var(--fs-3xs)/1.3 var(--font-body)", color: "var(--text-faint)" }}>Toca el lápiz para renombrar</span>
+      </div>
+      {equipo.map((p, i) => editando === i ? (
+        <form key={"e" + i} onSubmit={guardar} style={{ display: "flex", gap: "var(--sp-2)", alignItems: "flex-end", background: "var(--surface-raised)", border: "1px solid var(--border-blue)", borderRadius: "var(--radius-sm)", padding: "var(--sp-3)" }}>
+          <div style={{ flex: 1 }}>
+            <Input label={"Nombre · " + p.rol} value={nombre} onChange={e => setNombre(e.target.value)} icon={<Icon name="user-round" size={16} />} />
+          </div>
+          <Button size="sm" type="submit" iconLeft={<Icon name="check" size={14} />}>Guardar</Button>
+          <Button size="sm" variant="ghost" type="button" onClick={() => setEditando(null)}>Cancelar</Button>
+        </form>
+      ) : (
+        <div key={p.nombre + i} style={{ display: "flex", gap: "var(--sp-2)", alignItems: "center" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <BarberCard name={p.nombre} role={p.rol} estado={p.estado} nextSlot={p.proximo} />
+          </div>
+          <Button size="sm" variant="ghost" type="button" onClick={() => { setEditando(i); setNombre(p.nombre); }} aria-label={"Renombrar a " + p.nombre}><Icon name="pencil" size={15} /></Button>
+        </div>
+      ))}
+    </Card>
+  );
+}
+
+/* ── Carta de servicios editable: precios, tiempos y servicios nuevos ──
+   Los cambios se guardan en este navegador (localStorage). */
+const CLAVE_SERVICIOS = "turnos911_servicios";
+const CATEGORIAS_SERVICIO = [
+  { clave: "cortes", titulo: "Cortes / motilados", icono: "scissors" },
+  { clave: "spa", titulo: "Spa y masajes", icono: "hand-heart" },
+  { clave: "barberia", titulo: "Barbería y otros", icono: "spray-can" }
+];
+
+function FormServicio({ inicial, rotulo, onGuardar, onCancelar }) {
+  const [nombre, setNombre] = React.useState(inicial ? inicial.nombre : "");
+  const [precio, setPrecio] = React.useState(inicial ? inicial.precio : "$");
+  const [dur, setDur] = React.useState(inicial ? inicial.dur : "45 min");
+  function enviar(e) {
+    e.preventDefault();
+    if (nombre.trim().length > 1) onGuardar({ nombre: nombre.trim(), precio: precio.trim(), dur: dur.trim() });
+  }
+  return (
+    <form onSubmit={enviar} style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr", gap: "var(--sp-2)", alignItems: "end", background: "var(--surface-raised)", border: "1px solid var(--border-blue)", borderRadius: "var(--radius-sm)", padding: "var(--sp-3)" }}>
+      <Input label={rotulo} placeholder="Nombre del servicio" value={nombre} onChange={e => setNombre(e.target.value)} />
+      <Input label="Precio" placeholder="$50.000" value={precio} onChange={e => setPrecio(e.target.value)} />
+      <Input label="Duración" placeholder="45 min" value={dur} onChange={e => setDur(e.target.value)} />
+      <div style={{ gridColumn: "1 / -1", display: "flex", gap: "var(--sp-2)", justifyContent: "flex-end" }}>
+        <Button size="sm" type="submit" iconLeft={<Icon name="check" size={14} />}>Guardar</Button>
+        <Button size="sm" variant="ghost" type="button" onClick={onCancelar}>Cancelar</Button>
+      </div>
+    </form>
+  );
+}
+
+function ServiciosAdmin({ servicios, actualizar, agregar, eliminar }) {
+  const [editando, setEditando] = React.useState(null);   // "cat:idx"
+  const [agregando, setAgregando] = React.useState(null); // "cat"
+  return (
+    <div style={{ display: "grid", gap: "var(--sp-5)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-3)", flexWrap: "wrap" }}>
+        <h3 style={{ margin: 0, font: "700 var(--fs-xl)/1 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wider)", color: "var(--text-strong)" }}>Carta de servicios</h3>
+        <span style={{ font: "var(--fw-regular) var(--fs-2xs)/1.4 var(--font-body)", color: "var(--text-faint)" }}>Los cambios se guardan en este navegador; para publicarlos en la página pídelos al desarrollador.</span>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "var(--sp-4)", alignItems: "start" }}>
+        {CATEGORIAS_SERVICIO.map(cat => (
+          <Card key={cat.clave} padding="var(--card-pad)" style={{ display: "grid", gap: "var(--sp-3)", alignContent: "start" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-2)" }}>
+              <span style={{ color: "var(--naranja-500)" }}><Icon name={cat.icono} size={18} /></span>
+              <span style={{ font: "700 var(--fs-lg)/1 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wide)", color: "var(--text-strong)", flex: 1 }}>{cat.titulo}</span>
+              <Button size="sm" variant="outline" onClick={() => { setAgregando(cat.clave); setEditando(null); }} iconLeft={<Icon name="plus" size={14} />}>Nuevo</Button>
+            </div>
+            {(servicios[cat.clave] || []).map((s, i) => editando === cat.clave + ":" + i ? (
+              <FormServicio key={"e" + i} inicial={s} rotulo="Nombre" onGuardar={c => { actualizar(cat.clave, i, c); setEditando(null); }} onCancelar={() => setEditando(null)} />
+            ) : (
+              <div key={s.nombre + i} style={{ display: "flex", alignItems: "center", gap: "var(--sp-3)", padding: "var(--sp-3)", background: "var(--surface-raised)", border: "1px solid var(--border-hair)", borderRadius: "var(--radius-sm)" }}>
+                <div style={{ display: "grid", gap: 1, flex: 1, minWidth: 0 }}>
+                  <span style={{ font: "700 var(--fs-sm)/1.2 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wide)", color: "var(--text-strong)" }}>{s.nombre}</span>
+                  <span style={{ font: "var(--fw-regular) var(--fs-2xs)/1.4 var(--font-body)", color: "var(--text-faint)" }}>{s.dur}</span>
+                </div>
+                <span style={{ font: "700 var(--fs-base)/1 var(--font-condensed)", color: "var(--naranja-500)" }}>{s.precio}</span>
+                <Button size="sm" variant="ghost" onClick={() => { setEditando(cat.clave + ":" + i); setAgregando(null); }} aria-label={"Editar " + s.nombre}><Icon name="pencil" size={14} /></Button>
+                <Button size="sm" variant="ghost" onClick={() => { if (window.confirm("¿Quitar \"" + s.nombre + "\" de la carta?")) eliminar(cat.clave, i); }} aria-label={"Eliminar " + s.nombre}><Icon name="trash-2" size={14} /></Button>
+              </div>
+            ))}
+            {agregando === cat.clave && (
+              <FormServicio rotulo="Nuevo servicio" onGuardar={c => { agregar(cat.clave, c); setAgregando(null); }} onCancelar={() => setAgregando(null)} />
+            )}
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PanelBarbero({ cola, enSilla, retraso, equipo, llamar, terminar, siguiente, correr, renombrar }) {
+  const enEspera = cola.filter(t => t.estado === "espera").length;
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "var(--sp-6)", alignItems: "start" }}>
+      <Card padding="var(--card-pad-lg)" style={{ display: "grid", gap: "var(--sp-5)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "var(--sp-4)", flexWrap: "wrap" }}>
+          <h3 style={{ margin: 0, font: "700 var(--fs-xl)/1 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wider)", color: "var(--text-strong)" }}>Cola de hoy</h3>
+          <div style={{ display: "flex", gap: "var(--sp-2)", alignItems: "center" }}>
+            <Badge tone="turno" dot>{enEspera} en espera</Badge>
+            <Button size="sm" onClick={siguiente} disabled={enEspera === 0} iconLeft={<Icon name="arrow-right" size={14} />}>Siguiente turno</Button>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-3)", flexWrap: "wrap", padding: "var(--sp-3) var(--sp-4)", background: "var(--surface-raised)", border: "1px solid var(--border-hair)", borderRadius: "var(--radius-sm)" }}>
+          <Icon name="clock" size={16} color="var(--ambar-500)" />
+          <span style={{ font: "600 var(--fs-2xs)/1.3 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wider)", color: "var(--text-muted)" }}>¿El turno se alargó? Correr las citas</span>
+          <div style={{ display: "flex", gap: "var(--sp-2)", marginLeft: "auto" }}>
+            {[10, 15, 30].map(n => (
+              <Button key={n} size="sm" variant="outline" onClick={() => correr(n)}>+{n} min</Button>
+            ))}
+          </div>
+          {retraso > 0 && <Badge tone="turno">+{retraso} min hoy</Badge>}
+        </div>
+        {retraso > 0 && (
+          <span style={{ font: "var(--fw-regular) var(--fs-2xs)/1.5 var(--font-body)", color: "var(--text-faint)", marginTop: "calc(var(--sp-2) * -1)" }}>
+            Las horas corridas se muestran tachadas. Avisa por WhatsApp a los clientes que cambiaron de hora.
+          </span>
+        )}
+
+        <div style={{ display: "grid", gap: "var(--sp-2)" }}>
+          {cola.map(t => (
+            <div key={t.codigo} style={{
+              display: "flex", alignItems: "center", gap: "var(--sp-4)", padding: "var(--sp-3) var(--sp-4)",
+              background: t.estado === "silla" ? "var(--surface-accent-soft)" : "var(--surface-raised)",
+              border: "1px solid " + (t.estado === "silla" ? "rgba(240,122,40,.45)" : "var(--border-hair)"),
+              borderRadius: "var(--radius-sm)", opacity: t.estado === "listo" ? .45 : 1
+            }}>
+              <span style={{ font: "700 var(--fs-lg)/1 var(--font-mono)", color: t.estado === "silla" ? "var(--naranja-500)" : "var(--azul-neon)", width: 66 }}>{t.codigo}</span>
+              <div style={{ display: "grid", gap: 1, flex: 1, minWidth: 0 }}>
+                <span style={{ font: "700 var(--fs-sm)/1.3 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wide)", color: "var(--text-strong)" }}>{t.cliente}</span>
+                <span style={{ font: "var(--fw-regular) var(--fs-2xs)/1.4 var(--font-body)", color: "var(--text-faint)" }}>
+                  {t.servicio} · {t.barbero} · {t.horaOriginal && t.horaOriginal !== t.hora ? <React.Fragment><s style={{ opacity: .65 }}>{t.horaOriginal}</s> → {t.hora}</React.Fragment> : t.hora}
+                </span>
+              </div>
+              {t.estado === "espera" && <Button size="sm" variant="outline" onClick={() => llamar(t.codigo)}>Llamar</Button>}
+              {t.estado === "silla" && <Button size="sm" onClick={() => terminar(t.codigo)} iconLeft={<Icon name="check" size={14} />}>Terminar</Button>}
+              {t.estado === "listo" && <Badge tone="libre">Atendido</Badge>}
+            </div>
+          ))}
+        </div>
+      </Card>
+      <div style={{ display: "grid", gap: "var(--sp-4)" }}>
+        {enSilla
+          ? <TurnoTicket codigo={enSilla.codigo} servicio={enSilla.servicio} barbero={enSilla.barbero} hora={enSilla.hora} fecha="Hoy" />
+          : <Card padding="var(--card-pad)" style={{ display: "grid", gap: 8, justifyItems: "center", textAlign: "center" }}>
+              <Icon name="armchair" size={28} color="var(--text-faint)" />
+              <span style={{ font: "var(--type-small)", color: "var(--text-muted)" }}>Silla libre. Llama al siguiente turno.</span>
+            </Card>}
+        <EquipoAdmin equipo={equipo} renombrar={renombrar} />
+      </div>
+    </div>
+  );
+}
+
+function AdminTurnos() {
+  const D = window.DATA_911;
+  const [vista, setVista] = React.useState("panel");
+  const [retraso, setRetraso] = React.useState(0);
+  /* Nombres del equipo: los guardados en este navegador pisan los del sitio. */
+  const [equipo, setEquipo] = React.useState(() => {
+    let guardados = null;
+    try { guardados = JSON.parse(localStorage.getItem(CLAVE_NOMBRES) || "null"); } catch (e) {}
+    return D.equipo.map((p, i) => guardados && guardados[i] ? { ...p, nombre: guardados[i] } : { ...p });
+  });
+  const [cola, setCola] = React.useState(() => [{ codigo: "A-014", cliente: "Mateo L.", servicio: "Fade texturizado", barbero: "Samuel", hora: "10:00", estado: "silla" }, ...COLA_INICIAL]);
+  /* Carta de servicios: lo guardado en este navegador pisa lo del sitio. */
+  const [servicios, setServicios] = React.useState(() => {
+    let guardados = null;
+    try { guardados = JSON.parse(localStorage.getItem(CLAVE_SERVICIOS) || "null"); } catch (e) {}
+    return guardados || {
+      cortes: D.cortes.map(c => ({ nombre: c.nombre, precio: c.precio, dur: c.dur })),
+      spa: D.spa.map(s => ({ nombre: s.nombre, precio: s.precio, dur: s.dur })),
+      barberia: (D.barberia || []).map(b => ({ nombre: b.nombre, precio: b.precio, dur: b.dur }))
+    };
+  });
+  const guardarServicios = sv => { setServicios(sv); try { localStorage.setItem(CLAVE_SERVICIOS, JSON.stringify(sv)); } catch (e) {} };
+  const actualizarServicio = (cat, i, campos) => guardarServicios({ ...servicios, [cat]: servicios[cat].map((s, j) => j === i ? { ...s, ...campos } : s) });
+  const agregarServicio = (cat, item) => guardarServicios({ ...servicios, [cat]: [...servicios[cat], item] });
+  const eliminarServicio = (cat, i) => guardarServicios({ ...servicios, [cat]: servicios[cat].filter((s, j) => j !== i) });
+  React.useEffect(() => { if (window.lucide) window.lucide.createIcons({ nameAttr: "data-lucide" }); });
+  const enSilla = cola.find(t => t.estado === "silla");
+
+  const llamar = c => setCola(q => q.map(t => t.codigo === c ? { ...t, estado: "silla" } : t.estado === "silla" ? { ...t, estado: "listo" } : t));
+  const terminar = c => setCola(q => q.map(t => t.codigo === c ? { ...t, estado: "listo" } : t));
+  const siguiente = () => { const prox = cola.find(t => t.estado === "espera"); if (prox) llamar(prox.codigo); };
+  const correr = n => {
+    setCola(q => q.map(t => t.estado === "espera"
+      ? { ...t, horaOriginal: t.horaOriginal || t.hora, hora: aHora(aMin(t.hora) + n) }
+      : t));
+    setRetraso(r => r + n);
+  };
+  /* Renombrar barbero: actualiza equipo, cola del día y lo persiste localmente. */
+  const renombrar = (i, nuevo) => {
+    const viejo = equipo[i].nombre;
+    const eq = equipo.map((p, j) => j === i ? { ...p, nombre: nuevo } : p);
+    setEquipo(eq);
+    setCola(q => q.map(t => t.barbero === viejo ? { ...t, barbero: nuevo } : t));
+    try { localStorage.setItem(CLAVE_NOMBRES, JSON.stringify(eq.map(p => p.nombre))); } catch (e) {}
+  };
+  const salir = () => { sessionStorage.removeItem(SESION); location.reload(); };
+
+  return (
+    <div style={{ minHeight: "100vh", background: "var(--surface-page)" }}>
+      <header style={{ display: "flex", alignItems: "center", gap: "var(--sp-6)", padding: "12px var(--gutter)", borderBottom: "1px solid var(--border-hair)", position: "sticky", top: 0, background: "rgba(10,10,11,.9)", backdropFilter: "blur(14px)", zIndex: 10 }}>
+        <img src="/assets/logo-911-urban-salon-dark.png" alt="911 Urban Salón" style={{ height: 44 }} />
+        <span style={{ font: "600 var(--fs-2xs)/1 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-widest)", color: "var(--text-faint)" }}>Administración de turnos</span>
+        <div style={{ display: "flex", gap: "var(--sp-2)", marginLeft: "auto" }}>
+          <Button size="sm" variant={vista === "sala" ? "primary" : "ghost"} onClick={() => setVista("sala")}>Pantalla de sala</Button>
+          <Button size="sm" variant={vista === "panel" ? "primary" : "ghost"} onClick={() => setVista("panel")}>Panel del barbero</Button>
+          <Button size="sm" variant={vista === "servicios" ? "primary" : "ghost"} onClick={() => setVista("servicios")}>Servicios</Button>
+          <Button size="sm" variant="ghost" onClick={salir} iconLeft={<Icon name="log-out" size={14} />}>Salir</Button>
+        </div>
+      </header>
+      <main className="u-container" style={{ paddingBlock: "var(--sp-8)" }}>
+        {vista === "sala" && <Sala enSilla={enSilla} cola={cola} retraso={retraso} />}
+        {vista === "panel" && <PanelBarbero cola={cola} enSilla={enSilla} retraso={retraso} equipo={equipo} llamar={llamar} terminar={terminar} siguiente={siguiente} correr={correr} renombrar={renombrar} />}
+        {vista === "servicios" && <ServiciosAdmin servicios={servicios} actualizar={actualizarServicio} agregar={agregarServicio} eliminar={eliminarServicio} />}
+      </main>
+    </div>
+  );
+}
+
+function AppAdmin() {
+  const [auth, setAuth] = React.useState(() => sessionStorage.getItem(SESION) === "ok");
+  return auth ? <AdminTurnos /> : <LoginGate onOk={() => setAuth(true)} />;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<AppAdmin />);
+
+</script>
+</body></html>
