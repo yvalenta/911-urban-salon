@@ -237,6 +237,7 @@ html{scroll-behavior:smooth}
    por selector de atributo en pantallas angostas. */
 @media (max-width: 960px){
   :root{ --fs-7xl:72px; --fs-6xl:52px; --fs-5xl:46px; --fs-4xl:38px; --section-y:72px; }
+  div[style*="sticky"]{ position: static !important; }
   div[style*="repeat(4"]{ grid-template-columns: repeat(2, 1fr) !important; }
   div[style*="repeat(3"]{ grid-template-columns: 1fr !important; }
   div[style*="1.15fr"], div[style*="1.55fr"], div[style*=".9fr"], div[style*=".8fr"],
@@ -3697,7 +3698,7 @@ window.DATA_911 = {
 };
 
 </script>
-<!-- ══ Overrides del bundle: selector categorizado + estados de servicio + horarios data-driven ══ -->
+<!-- ══ Overrides del bundle: multiservicio + estados + horarios data-driven ══ -->
 <script type="text/babel" data-presets="react">
 /* Reemplaza el TurnosAsistente del bundle: selector de servicio categorizado
    (cortes / spa / barbería) con chips más legibles: nombre grande, duración y precio. */
@@ -3747,14 +3748,18 @@ function TurnosAsistente({ servicioInicial }) {
   const D = window.DATA_911;
   const dias = React.useMemo(() => proximosDias(5), []);
   const grupos = [
-    { titulo: "Cortes / motilados", icon: "scissors", items: D.cortes.map(c => ({ nombre: c.nombre, dur: c.dur, precio: c.precio, estado: c.estado, spa: false })) },
-    { titulo: "Spa y masajes", icon: "hand-heart", items: D.spa.map(s => ({ nombre: s.nombre, dur: s.dur, precio: s.precio, estado: s.estado, spa: true })) },
-    { titulo: "Barbería y otros", icon: "spray-can", items: (D.barberia || []).map(b => ({ nombre: b.nombre, dur: b.dur, precio: b.precio, estado: b.estado, spa: false })) }
-  ].map(g => ({ ...g, items: g.items.filter(s => s.estado !== "borrador") })).filter(g => g.items.length);
-  const servicios = grupos.flatMap(g => g.items).filter(s => s.estado !== "agotado");
+    { titulo: "Cortes / motilados", icon: "scissors", cat: "cortes", items: D.cortes },
+    { titulo: "Spa y masajes", icon: "hand-heart", cat: "spa", items: D.spa },
+    { titulo: "Barbería y otros", icon: "spray-can", cat: "barberia", items: D.barberia || [] }
+  ].map(g => ({
+    ...g,
+    items: g.items.filter(s => s.estado !== "borrador").map(s => ({ nombre: s.nombre, dur: s.dur, precio: s.precio, estado: s.estado, cat: g.cat, spa: g.cat === "spa" }))
+  })).filter(g => g.items.length);
+  const reservables = grupos.flatMap(g => g.items).filter(s => s.estado !== "agotado");
 
+  /* Regla general: se combinan varios servicios, pero solo UN corte por turno. */
+  const [seleccion, setSeleccion] = React.useState([]);
   const [paso, setPaso] = React.useState(0);
-  const [servicio, setServicio] = React.useState(null);
   const [barbero, setBarbero] = React.useState(null);
   const [dia, setDia] = React.useState(dias[0].key);
   const [hora, setHora] = React.useState(null);
@@ -3763,41 +3768,71 @@ function TurnosAsistente({ servicioInicial }) {
   const [turno, setTurno] = React.useState(null);
   const [auto, setAuto] = React.useState(false);
 
+  const precioNum = p => parseInt(String(p || "").replace(/[^0-9]/g, ""), 10) || 0;
+  const durNum = d => parseInt(String(d || "").replace(/[^0-9]/g, ""), 10) || 0;
+  const totalPrecio = seleccion.reduce((a, s) => a + precioNum(s.precio), 0);
+  const totalMin = seleccion.reduce((a, s) => a + durNum(s.dur), 0);
+  const fmtPrecio = n => "$" + n.toLocaleString("es-CO");
+  const fmtDur = m => m >= 60 ? Math.floor(m / 60) + " h" + (m % 60 ? " " + (m % 60) + " min" : "") : m + " min";
+  const nombresSel = seleccion.map(s => s.nombre).join(" + ");
+
+  function alternar(s) {
+    setSeleccion(sel => {
+      const ya = sel.some(x => x.nombre === s.nombre);
+      if (ya) return sel.filter(x => x.nombre !== s.nombre);
+      if (s.cat === "cortes") return [...sel.filter(x => x.cat !== "cortes"), s];
+      return [...sel, s];
+    });
+    setBarbero(null); setHora(null);
+  }
+
   React.useEffect(() => {
     if (!servicioInicial) return;
-    const s = servicios.find(x => x.nombre === servicioInicial);
-    if (s) { setServicio(s); setPaso(1); setBarbero(null); setHora(null); }
+    const s = reservables.find(x => x.nombre === servicioInicial);
+    if (s) { setSeleccion([s]); setPaso(1); setBarbero(null); setHora(null); }
   }, [servicioInicial]);
 
-  const esSpa = servicio ? servicio.spa : false;
-  const equipo = D.equipo.filter(p => (p.rol.toLowerCase().includes("masajista") ? esSpa : !esSpa));
-  const jornadas = React.useMemo(() => construirJornadas(dia, barbero || "", esSpa), [dia, barbero, esSpa]);
+  /* Quién atiende: barberos si hay servicios de silla, masajistas si hay spa;
+     con mezcla se muestran ambos y el elegido coordina el resto. */
+  const haySpa = seleccion.some(s => s.spa);
+  const haySilla = seleccion.some(s => !s.spa);
+  const equipo = D.equipo.filter(p => {
+    const esMasajista = p.rol.toLowerCase().includes("masajista");
+    if (!seleccion.length) return true;
+    return (haySpa && esMasajista) || (haySilla && !esMasajista);
+  });
+  const jornadas = React.useMemo(() => construirJornadas(dia, barbero || "", haySpa && !haySilla), [dia, barbero, haySpa, haySilla]);
 
   function asignarAutomatico() {
-    const s = servicio || servicios[0];
-    const libres = D.equipo.filter(p => (p.rol.toLowerCase().includes("masajista") ? s.spa : !s.spa) && p.estado !== "ocupado");
+    const sel = seleccion.length ? seleccion : (reservables.length ? [reservables[0]] : []);
+    if (!sel.length) return;
+    const conSpa = sel.some(s => s.spa), conSilla = sel.some(s => !s.spa);
+    const libres = D.equipo.filter(p => {
+      const esMasajista = p.rol.toLowerCase().includes("masajista");
+      return ((conSpa && esMasajista) || (conSilla && !esMasajista)) && p.estado !== "ocupado";
+    });
     const cand = libres[0] || D.equipo[0];
-    const js = construirJornadas(dias[0].key, cand.nombre, s.spa);
+    const js = construirJornadas(dias[0].key, cand.nombre, conSpa && !conSilla);
     let primera = null;
     for (const j of js) { const libre = j.slots.find(x => !x.tomado); if (libre) { primera = libre.hora; break; } }
-    setServicio(s); setBarbero(cand.nombre); setDia(dias[0].key); setHora(primera); setAuto(true); setPaso(3);
+    setSeleccion(sel); setBarbero(cand.nombre); setDia(dias[0].key); setHora(primera); setAuto(true); setPaso(3);
   }
 
   function confirmar() {
     const codigo = "A-" + String(10 + Math.floor(Math.random() * 80));
     const d = dias.find(x => x.key === dia);
-    setTurno({ codigo, servicio: servicio.nombre, barbero, fecha: d.largo, hora, posicion: 3 });
+    setTurno({ codigo, servicio: nombresSel, barbero, fecha: d.largo, hora, posicion: 3 });
     setPaso(4);
   }
 
   const pasos = ["Servicio", "Barbero", "Hora", "Datos"];
-  const puedeSeguir = [!!servicio, !!barbero, !!hora, nombre.trim().length > 1 && tel.trim().length > 6][paso];
+  const puedeSeguir = [seleccion.length > 0, !!barbero, !!hora, nombre.trim().length > 1 && tel.trim().length > 6][paso];
 
   return (
     <section id="turnos" style={{ paddingBlock: "var(--section-y)", position: "relative", overflow: "hidden" }}>
       <div style={{ position: "absolute", inset: 0, background: "radial-gradient(900px 420px at 78% 12%, rgba(15,107,180,.20), transparent 68%)" }} />
       <div className="u-container" style={{ position: "relative", display: "grid", gap: "var(--sp-10)" }}>
-        <SectionHeading kicker="Asignación automática de turnos" title="Pide tu turno en 30 segundos" description="Dinos qué necesitas y el sistema te da el hueco más cercano con el barbero libre. Si prefieres, elígelo tú paso a paso." align="center" />
+        <SectionHeading kicker="Asignación automática de turnos" title="Pide tu turno en 30 segundos" description="Combina los servicios que quieras — solo un corte por turno — y el sistema te da el hueco más cercano." align="center" />
 
         <div style={{ display: "grid", gridTemplateColumns: "1.55fr 1fr", gap: "var(--sp-6)", alignItems: "start" }}>
           <Card padding="var(--card-pad-lg)" accent="azul" style={{ display: "grid", gap: "var(--sp-6)", minHeight: 470, alignContent: "start" }}>
@@ -3810,7 +3845,7 @@ function TurnosAsistente({ servicioInicial }) {
 
             {paso === 0 && (
               <div style={{ display: "grid", gap: "var(--sp-5)" }}>
-                <span style={{ font: "600 var(--fs-2xs)/1 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wider)", color: "var(--text-muted)" }}>¿Qué te vas a hacer?</span>
+                <span style={{ font: "600 var(--fs-2xs)/1.4 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wider)", color: "var(--text-muted)" }}>¿Qué te vas a hacer? · Puedes elegir varios — solo un corte</span>
                 {grupos.map(g => (
                   <div key={g.titulo} style={{ display: "grid", gap: "var(--sp-3)" }}>
                     <span style={{ display: "flex", alignItems: "center", gap: 8, font: "700 var(--fs-xs)/1 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wider)", color: "var(--naranja-500)" }}>
@@ -3819,17 +3854,24 @@ function TurnosAsistente({ servicioInicial }) {
                     </span>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--sp-2)" }}>
                       {g.items.map(s => (
-                        <ChipServicio key={s.nombre} s={s} selected={servicio && servicio.nombre === s.nombre} onClick={() => { setServicio(s); setBarbero(null); setHora(null); }} />
+                        <ChipServicio key={s.nombre} s={s} selected={seleccion.some(x => x.nombre === s.nombre)} onClick={() => alternar(s)} />
                       ))}
                     </div>
                   </div>
                 ))}
+                {seleccion.length > 0 && (
+                  <div style={{ display: "flex", gap: "var(--sp-4)", alignItems: "center", flexWrap: "wrap", padding: "var(--sp-3) var(--sp-4)", background: "var(--surface-raised)", border: "1px solid var(--border-blue)", borderRadius: "var(--radius-sm)" }}>
+                    <span style={{ font: "700 var(--fs-sm)/1.3 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wide)", color: "var(--text-strong)", flex: 1, minWidth: 180 }}>{nombresSel}</span>
+                    <span style={{ font: "700 var(--fs-lg)/1 var(--font-condensed)", color: "var(--naranja-500)" }}>{fmtPrecio(totalPrecio)}</span>
+                    <span style={{ font: "600 var(--fs-2xs)/1 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wider)", color: "var(--text-faint)" }}>{fmtDur(totalMin)}</span>
+                  </div>
+                )}
               </div>
             )}
 
             {paso === 1 && (
               <div style={{ display: "grid", gap: "var(--sp-3)" }}>
-                <span style={{ font: "600 var(--fs-2xs)/1 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wider)", color: "var(--text-muted)" }}>¿Con quién?</span>
+                <span style={{ font: "600 var(--fs-2xs)/1.4 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wider)", color: "var(--text-muted)" }}>{haySpa && haySilla ? "¿Quién te recibe? El equipo se coordina para el resto de servicios" : "¿Con quién?"}</span>
                 {equipo.map(p => (
                   <BarberCard key={p.nombre} name={p.nombre} role={p.rol} estado={p.estado} nextSlot={p.proximo} specialty={p.especialidad}
                     selected={barbero === p.nombre} onClick={() => { if (p.estado !== "ocupado") { setBarbero(p.nombre); setHora(null); } }} />
@@ -3846,6 +3888,7 @@ function TurnosAsistente({ servicioInicial }) {
                   </div>
                 </div>
                 <SlotPicker jornadas={jornadas} value={hora} onChange={setHora} />
+                {totalMin > 45 && <span style={{ font: "var(--fw-regular) var(--fs-2xs)/1.5 var(--font-body)", color: "var(--text-faint)" }}>Tus servicios suman {fmtDur(totalMin)}: la hora elegida es la de inicio.</span>}
               </div>
             )}
 
@@ -3857,10 +3900,10 @@ function TurnosAsistente({ servicioInicial }) {
                 </div>
                 {auto && <Badge tone="azul" dot>Turno asignado automáticamente: el hueco más cercano</Badge>}
                 <div style={{ display: "grid", gap: "var(--sp-2)", background: "var(--surface-raised)", border: "1px solid var(--border-hair)", borderRadius: "var(--radius-sm)", padding: "var(--sp-4)" }}>
-                  {[["Servicio", servicio && servicio.nombre], ["Precio", servicio && servicio.precio], ["Barbero", barbero], ["Día", (dias.find(d => d.key === dia) || {}).largo], ["Hora", hora]].map(([k, v]) => (
+                  {[["Servicios", nombresSel], ["Total", fmtPrecio(totalPrecio) + " · " + fmtDur(totalMin)], ["Barbero", barbero], ["Día", (dias.find(d => d.key === dia) || {}).largo], ["Hora", hora]].map(([k, v]) => (
                     <div key={k} style={{ display: "flex", justifyContent: "space-between", gap: "var(--sp-4)" }}>
-                      <span style={{ font: "600 var(--fs-2xs)/1.5 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wider)", color: "var(--text-faint)" }}>{k}</span>
-                      <span style={{ font: "700 var(--fs-sm)/1.5 var(--font-condensed)", textTransform: "uppercase", color: "var(--text-strong)" }}>{v || "—"}</span>
+                      <span style={{ font: "600 var(--fs-2xs)/1.5 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wider)", color: "var(--text-faint)", flex: "0 0 auto" }}>{k}</span>
+                      <span style={{ font: "700 var(--fs-sm)/1.5 var(--font-condensed)", textTransform: "uppercase", color: "var(--text-strong)", textAlign: "right" }}>{v || "—"}</span>
                     </div>
                   ))}
                 </div>
@@ -3876,13 +3919,14 @@ function TurnosAsistente({ servicioInicial }) {
                     href={"https://wa.me/" + D.telefono + "?text=" + encodeURIComponent(
                       "Hola, soy " + nombre + ". Pedí un turno en la página:\n" +
                       "Código: " + turno.codigo + "\n" +
-                      "Servicio: " + turno.servicio + "\n" +
+                      "Servicios: " + turno.servicio + "\n" +
+                      "Total: " + fmtPrecio(totalPrecio) + " · " + fmtDur(totalMin) + "\n" +
                       "Con: " + turno.barbero + "\n" +
                       "Día: " + turno.fecha + "\n" +
                       "Hora: " + turno.hora + "\n" +
                       "Mi celular: " + tel)}
                     iconLeft={<Icon name="message-circle" size={16} />}>Enviar por WhatsApp</Button>
-                  <Button variant="ghost" onClick={() => { setPaso(0); setTurno(null); setServicio(null); setBarbero(null); setHora(null); setAuto(false); }}>Pedir otro</Button>
+                  <Button variant="ghost" onClick={() => { setPaso(0); setTurno(null); setSeleccion([]); setBarbero(null); setHora(null); setAuto(false); }}>Pedir otro</Button>
                 </div>
               </div>
             )}
@@ -3901,7 +3945,7 @@ function TurnosAsistente({ servicioInicial }) {
             <QueueStatus enAtencion="A-014" esperaMin={25} enEspera={[{ codigo: "A-015", servicio: "Skin fade" }, { codigo: "A-016", servicio: "Barba" }, { codigo: "A-017", servicio: "Masaje facial" }]} />
             <Card padding="var(--card-pad)" style={{ display: "grid", gap: "var(--sp-3)" }}>
               <span className="u-kicker">Cómo funciona</span>
-              {[["zap", "El sistema busca el primer hueco libre del barbero que elijas."], ["ticket", "Te asigna un código de turno y te lo manda por WhatsApp."], ["clock", "Llega 5 minutos antes: el turno se libera a los 10."]].map(([ic, t]) => (
+              {[["zap", "El sistema busca el primer hueco libre del barbero que elijas."], ["layers", "¿Varios servicios? Se agendan seguidos en el mismo turno; solo un corte por visita."], ["ticket", "Te asigna un código de turno y te lo manda por WhatsApp."], ["clock", "Llega 5 minutos antes: el turno se libera a los 10."]].map(([ic, t]) => (
                 <div key={t} style={{ display: "flex", gap: "var(--sp-3)", alignItems: "flex-start" }}>
                   <span style={{ color: "var(--naranja-500)", marginTop: 2 }}><Icon name={ic} size={16} /></span>
                   <span style={{ font: "var(--type-small)", color: "var(--text-muted)" }}>{t}</span>
@@ -3914,7 +3958,6 @@ function TurnosAsistente({ servicioInicial }) {
     </section>
   );
 }
-
 
 function Cortes({ onPedir }) {
   const D = window.DATA_911;

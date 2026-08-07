@@ -236,6 +236,7 @@ html{scroll-behavior:smooth}
    por selector de atributo en pantallas angostas. */
 @media (max-width: 960px){
   :root{ --fs-7xl:72px; --fs-6xl:52px; --fs-5xl:46px; --fs-4xl:38px; --section-y:72px; }
+  div[style*="sticky"]{ position: static !important; }
   div[style*="repeat(4"]{ grid-template-columns: repeat(2, 1fr) !important; }
   div[style*="repeat(3"]{ grid-template-columns: 1fr !important; }
   div[style*="1.15fr"], div[style*="1.55fr"], div[style*=".9fr"], div[style*=".8fr"],
