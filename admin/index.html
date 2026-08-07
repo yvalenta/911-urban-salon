@@ -211,21 +211,48 @@ function useTurnos(avisar) {
     else setCola(data || []);
   }, []);
 
+  /* Cada evento de Realtime se aplica sobre la lista en memoria (sin refetch
+     del día completo: con volumen alto y varios dispositivos eso multiplica
+     consultas). El refetch queda solo para reconexión y resync de respaldo. */
+  const ordenCola = (a, b) => a.hora < b.hora ? -1 : a.hora > b.hora ? 1 : (a.orden || 0) - (b.orden || 0);
+  const aplicarCambio = React.useCallback(payload => {
+    setCola(prev => {
+      if (payload.eventType === "DELETE") return prev.filter(t => t.id !== payload.old.id);
+      const fila = payload.new;
+      if (!fila || !fila.id) return prev;
+      const sin = prev.filter(t => t.id !== fila.id);
+      if (fila.fecha !== hoyISO()) return sin; // reagendado a otro día
+      return [...sin, fila].sort(ordenCola);
+    });
+  }, []);
+
   React.useEffect(() => {
-    cargar();
+    cargar(); // carga inicial aunque Realtime no logre conectar
     const canal = sb.channel("turnos-vivo")
-      .on("postgres_changes", { event: "*", schema: "public", table: "turnos" }, cargar)
-      .subscribe(st => setVivo(st === "SUBSCRIBED"));
+      .on("postgres_changes", { event: "*", schema: "public", table: "turnos" }, aplicarCambio)
+      .subscribe(st => {
+        setVivo(st === "SUBSCRIBED");
+        if (st === "SUBSCRIBED") cargar(); // recuperación de eventos perdidos al reconectar
+      });
+    /* El websocket se duerme con la pantalla bloqueada: al volver la app al
+       frente o recuperar red, refetch inmediato. */
+    const despertar = () => { if (!document.hidden) cargar(); };
+    document.addEventListener("visibilitychange", despertar);
+    window.addEventListener("online", despertar);
     const iv = setInterval(() => setTick(t => t + 1), 20000);
-    return () => { sb.removeChannel(canal); clearInterval(iv); };
-  }, [cargar]);
+    const resync = setInterval(cargar, 120000); // respaldo por si Realtime pierde un evento en silencio
+    return () => {
+      sb.removeChannel(canal); clearInterval(iv); clearInterval(resync);
+      document.removeEventListener("visibilitychange", despertar);
+      window.removeEventListener("online", despertar);
+    };
+  }, [cargar, aplicarCambio]);
 
   const act = async (id, campos, ok) => {
     const { data, error } = await sb.from("turnos").update(campos).eq("id", id).select();
     if (error) avisar(error.message, true);
     else if (!data.length) avisar("Sin permiso para ese turno", true);
-    else if (ok) avisar(ok);
-    cargar();
+    else { if (ok) avisar(ok); aplicarCambio({ eventType: "UPDATE", new: data[0] }); }
   };
 
   const llamar = async t => {
@@ -265,21 +292,21 @@ function useTurnos(avisar) {
   const reagendar = (t, hora) => act(t.id, { hora, hora_original: t.hora_original || t.hora }, t.codigo + " reagendado a " + hhmm(hora));
   const eliminar = async t => {
     const { error } = await sb.from("turnos").delete().eq("id", t.id);
-    if (error) avisar(error.message, true); else avisar("Eliminado: " + t.codigo);
-    cargar();
+    if (error) avisar(error.message, true);
+    else { avisar("Eliminado: " + t.codigo); aplicarCambio({ eventType: "DELETE", old: { id: t.id } }); }
   };
   const correr = async n => {
     const esperas = cola.filter(x => x.estado === "espera");
     for (const t of esperas) await sb.from("turnos").update({ hora: deMin(aMin(t.hora) + n), hora_original: t.hora_original || t.hora }).eq("id", t.id);
     avisar("Citas corridas +" + n + " min (" + esperas.length + ")");
-    cargar();
+    cargar(); // cambio masivo: un solo refetch
   };
   const crear = async campos => {
     const nums = cola.map(t => parseInt((t.codigo || "").replace(/\D/g, ""), 10) || 0);
     const codigo = "A-" + String(Math.max(13, ...nums) + 1).padStart(3, "0");
-    const { error } = await sb.from("turnos").insert({ ...campos, codigo, fecha: hoyISO() });
-    if (error) avisar(error.message, true); else avisar("Turno creado: " + codigo);
-    cargar();
+    const { data, error } = await sb.from("turnos").insert({ ...campos, codigo, fecha: hoyISO() }).select();
+    if (error) avisar(error.message, true);
+    else { avisar("Turno creado: " + codigo); if (data && data[0]) aplicarCambio({ eventType: "INSERT", new: data[0] }); }
   };
   const siguiente = async barbero => {
     const prox = cola.find(t => t.estado === "espera" && (!barbero || t.barbero_nombre === barbero));
@@ -298,7 +325,8 @@ function useProductos(avisar) {
   }, []);
   React.useEffect(() => {
     cargar();
-    const c = sb.channel("productos-vivo").on("postgres_changes", { event: "*", schema: "public", table: "productos" }, cargar).subscribe();
+    const c = sb.channel("productos-vivo").on("postgres_changes", { event: "*", schema: "public", table: "productos" }, cargar)
+      .subscribe(st => { if (st === "SUBSCRIBED") cargar(); });
     return () => sb.removeChannel(c);
   }, [cargar]);
   const guardar = async (id, campos, ok) => {
@@ -324,7 +352,8 @@ function useVentas(avisar) {
   }, []);
   React.useEffect(() => {
     cargar();
-    const c = sb.channel("ventas-vivo").on("postgres_changes", { event: "*", schema: "public", table: "ventas" }, cargar).subscribe();
+    const c = sb.channel("ventas-vivo").on("postgres_changes", { event: "*", schema: "public", table: "ventas" }, cargar)
+      .subscribe(st => { if (st === "SUBSCRIBED") cargar(); });
     return () => sb.removeChannel(c);
   }, [cargar]);
   const vender = async (items, user, vendedor, turno_id) => {

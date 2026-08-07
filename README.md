@@ -97,6 +97,14 @@ Desde la fase 1 el panel es un **dashboard conectado a Supabase** (proyecto
 `ssrrkcshhrggukknkoua`): la cola de turnos es compartida entre todos los
 dispositivos en tiempo real (Postgres + RLS + Realtime), con login real.
 
+La sincronización está pensada para volumen alto: cada evento de Realtime se
+aplica **incrementalmente** sobre la lista en memoria (sin recargar el día
+completo por evento); el refetch queda para la carga inicial, la reconexión
+del canal, el regreso de la app al frente (websocket dormido con pantalla
+bloqueada), la recuperación de red y un resync de respaldo cada 2 min. Los
+minutos transcurridos se calculan de timestamps del servidor, así que todos
+los dispositivos ven el mismo tiempo.
+
 **Cuentas** (correo sintético `usuario@911urban.local`):
 - Admin: usuario `admin`, contraseña `911urban`.
 - Barberos (rol limitado): usuario = su nombre (`samuel`, `mateo`, `julian`),
