@@ -3709,6 +3709,62 @@ window.DATA_911 = {
 };
 
 </script>
+<!-- ══ Fase 2: contenido en vivo desde Supabase (editable en /admin) ══ -->
+<script>
+/* La página monta con el contenido embebido como respaldo y se actualiza con
+   lo que diga la base (lectura anónima con la publishable key; escrituras
+   solo del admin vía RLS). El panel /admin edita estas tablas. */
+(() => {
+  const SB = "https://ssrrkcshhrggukknkoua.supabase.co";
+  const KEY = "sb_publishable_zLevCihGrnQqqlgM7mXbrw_HyBtvzIj"; // pública por diseño
+  const fmtCOP = n => "$" + (n || 0).toLocaleString("es-CO");
+  const sync = (window.__CONTENIDO_911 = { listo: false });
+  const mapa = r => ({
+    nombre: r.nombre, precio: fmtCOP(r.precio), dur: (r.dur_min || 45) + " min",
+    desc: r.descripcion || "", img: r.img || undefined, icon: r.icon || undefined,
+    badge: r.badge || undefined, estado: r.estado
+  });
+  (async () => {
+    try {
+      const h = { apikey: KEY };
+      const [rNeg, rSrv] = await Promise.all([
+        fetch(SB + "/rest/v1/negocio?select=*&limit=1", { headers: h }),
+        fetch(SB + "/rest/v1/servicios?select=*&order=orden.asc,creado_en.asc", { headers: h })
+      ]);
+      if (!rNeg.ok || !rSrv.ok) throw new Error("HTTP " + rNeg.status + "/" + rSrv.status);
+      const [negs, srv] = await Promise.all([rNeg.json(), rSrv.json()]);
+      const neg = negs && negs[0];
+      const D = window.DATA_911;
+      if (neg) {
+        if (neg.telefono) D.telefono = neg.telefono;
+        if (neg.direccion) D.direccion = neg.direccion;
+        if (neg.horario) D.horario = Object.assign({}, D.horario, neg.horario);
+        if (Array.isArray(neg.equipo) && neg.equipo.length) D.equipo = neg.equipo;
+      }
+      if (Array.isArray(srv) && srv.length) {
+        for (const cat of ["cortes", "spa", "barberia"]) {
+          const filas = srv.filter(s => s.categoria === cat);
+          if (filas.length) D[cat] = filas.map(mapa);
+        }
+      }
+      /* Los textos de prosa que citan precios u horarios también se rearman
+         con lo que diga la base, para que nada quede desactualizado. */
+      const precioDe = (lista, frag) => { const x = (lista || []).find(s => (s.nombre || "").toLowerCase().includes(frag)); return x && x.precio; };
+      const pCorte = (D.cortes[0] || {}).precio, pMasaje = (D.spa[0] || {}).precio;
+      const pTrenzas = precioDe(D.barberia, "trenza"), pTintura = precioDe(D.barberia, "tintura"), pAfeitado = precioDe(D.barberia, "afeit");
+      if (D.categorias && D.categorias.length >= 4) {
+        if (pCorte) D.categorias[0].texto = "Cualquier corte: " + pCorte + (pTrenzas ? " · Trenzas: " + pTrenzas : "") + (pTintura ? " · Tintura: " + pTintura : "") + ".";
+        if (pMasaje) D.categorias[2].texto = "Spa de pies, piedras calientes, facial y masoterapia. Sesión: " + pMasaje + ".";
+        if (pAfeitado) D.categorias[3].texto = "Toalla caliente, navaja y perfilado de barba. Afeitado: " + pAfeitado + ".";
+      }
+      const H = D.horario || {};
+      if (D.faq && D.faq[1] && H.dias && H.etiqueta) D.faq[1].a = H.dias + ", de " + H.etiqueta + " en jornada continua. " + (H.cierre ? H.cierre + "." : "");
+    } catch (e) { /* sin conexión: queda el contenido embebido */ }
+    sync.listo = true;
+    if (window.__refrescar911) window.__refrescar911();
+  })();
+})();
+</script>
 <!-- ══ Overrides del bundle: multiservicio + móvil interactivo + estados + horarios ══ -->
 <script type="text/babel" data-presets="react">
 /* Reemplaza el TurnosAsistente del bundle: selector de servicio categorizado
@@ -4014,6 +4070,9 @@ function TurnosAsistente({ servicioInicial }) {
   );
 }
 
+/* Foto del corte: URL completa (subida desde /admin a Storage) o asset local. */
+const imgServicio = im => /^https?:/.test(im || "") ? im : "assets/servicios/" + im + ".jpeg";
+
 function Cortes({ onPedir }) {
   const D = window.DATA_911;
   const { SectionHeading, ServiceCard } = window.Ds911UrbanSalNDesignSystem_1e06a9;
@@ -4030,7 +4089,7 @@ function Cortes({ onPedir }) {
               const agotado = c.estado === "agotado";
               return (
                 <div key={c.nombre} style={{ display: "grid", opacity: agotado ? .55 : 1, pointerEvents: agotado ? "none" : "auto" }}>
-                  <ServiceCard image={"assets/servicios/" + c.img + ".jpeg"} title={c.nombre} description={c.desc} price={c.precio} duration={c.dur} badge={agotado ? "No disponible" : c.badge} onClick={agotado ? undefined : () => onPedir(c.nombre)} />
+                  <ServiceCard image={imgServicio(c.img)} title={c.nombre} description={c.desc} price={c.precio} duration={c.dur} badge={agotado ? "No disponible" : c.badge} onClick={agotado ? undefined : () => onPedir(c.nombre)} />
                 </div>
               );
             })}
@@ -4041,7 +4100,7 @@ function Cortes({ onPedir }) {
             const agotado = c.estado === "agotado";
             return (
               <div key={c.nombre} data-aos="fade-up" data-aos-delay={i * 80} style={{ display: "grid", opacity: agotado ? .55 : 1, pointerEvents: agotado ? "none" : "auto" }}>
-                <ServiceCard image={"assets/servicios/" + c.img + ".jpeg"} title={c.nombre} description={c.desc} price={c.precio} duration={c.dur} badge={agotado ? "No disponible" : c.badge} onClick={agotado ? undefined : () => onPedir(c.nombre)} />
+                <ServiceCard image={imgServicio(c.img)} title={c.nombre} description={c.desc} price={c.precio} duration={c.dur} badge={agotado ? "No disponible" : c.badge} onClick={agotado ? undefined : () => onPedir(c.nombre)} />
               </div>
             );
           })}
@@ -4263,10 +4322,20 @@ Object.assign(window, { TurnosAsistente, Servicios, Cortes, Spa, ComoFunciona, R
 
 function App(){
   const [servicioPedido,setServicioPedido]=React.useState(null);
+  const [version,setVersion]=React.useState(0);
   React.useEffect(()=>{
     if(window.AOS) AOS.init({duration:520,easing:"ease-out-quart",once:true,offset:60});
     if(window.lucide) window.lucide.createIcons({nameAttr:"data-lucide"});
+    /* Si el contenido de Supabase llega después del montaje, re-render. */
+    window.__refrescar911=()=>setVersion(v=>v+1);
+    return ()=>{ window.__refrescar911=null; };
   },[]);
+  React.useEffect(()=>{
+    if(version>0){
+      if(window.lucide) window.lucide.createIcons({nameAttr:"data-lucide"});
+      if(window.AOS) AOS.refreshHard();
+    }
+  },[version]);
   function irATurnos(servicio){
     if(servicio) setServicioPedido(servicio+"|"+Date.now());
     const el=document.getElementById("turnos");
@@ -4291,10 +4360,15 @@ function App(){
 }
 let intentos=0;
 const iv=setInterval(()=>{
-  if(window.NavBar&&window.Servicios&&window.TurnosAsistente){
+  intentos++;
+  /* Espera hasta ~1.2s a que responda Supabase para pintar con contenido
+     fresco de una vez; si tarda más, monta con el embebido y __refrescar911
+     actualiza cuando llegue. */
+  const datosListos=!window.__CONTENIDO_911||window.__CONTENIDO_911.listo||intentos>30;
+  if(window.NavBar&&window.Servicios&&window.TurnosAsistente&&datosListos){
     clearInterval(iv);
     ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
-  }else if(++intentos>150){
+  }else if(intentos>150){
     clearInterval(iv);
     document.getElementById("root").innerHTML='<div style="min-height:60vh;display:grid;place-items:center;text-align:center;padding:40px;font:var(--type-body);color:var(--text-muted)"><div><strong style="font:400 36px/1 var(--font-display);text-transform:uppercase;color:var(--text-strong);display:block;margin-bottom:12px">Error al montar la página</strong>Los componentes del design system no cargaron. Recarga la página.</div></div>';
   }

@@ -180,6 +180,7 @@ const I = {
   rayo: "M13 2L4 14h6l-1 8 9-12h-6l1-8", salir: "M10 17l5-5-5-5M15 12H3M19 3h1a1 1 0 011 1v16a1 1 0 01-1 1h-1",
   usuario: "M20 21a8 8 0 10-16 0M12 11a4 4 0 100-8 4 4 0 000 8", cola: "M4 6h16M4 12h10M4 18h7",
   tv: "M3 5h18v12H3zM8 21h8", noAtendio: "M15 9l-6 6M9 9l6 6M21 12a9 9 0 11-18 0 9 9 0 0118 0",
+  lapiz: "M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z", foto: "M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2zM12 17a4 4 0 100-8 4 4 0 000 8",
   caja: "M3 9l2-5h14l2 5M3 9h18v11H3zM10 13h4", carrito: "M6 6h15l-1.5 8H8L6 6zM6 6L5 3H2M9 20a1 1 0 100-2 1 1 0 000 2zM18 20a1 1 0 100-2 1 1 0 000 2z", ajustes: "M12 15a3 3 0 100-6 3 3 0 000 6M19 12a7 7 0 01-.1 1.2l2 1.6-2 3.4-2.4-1a7 7 0 01-2 1.2L14 21h-4l-.4-2.6a7 7 0 01-2-1.2l-2.4 1-2-3.4 2-1.6A7 7 0 015 12a7 7 0 01.1-1.2l-2-1.6 2-3.4 2.4 1a7 7 0 012-1.2L10 3h4l.4 2.6a7 7 0 012 1.2l2.4-1 2 3.4-2 1.6c.1.4.2.8.2 1.2z"
 };
 
@@ -368,6 +369,55 @@ function useVentas(avisar) {
     cargar();
   };
   return { ventas, vender, anular };
+}
+
+/* ── Contenido del sitio público (negocio + carta) — fase 2 ──
+   Lo que se guarda aquí lo lee la landing con la anon key: editar = publicar. */
+function useContenido(avisar) {
+  const [negocio, setNegocio] = React.useState(null);
+  const [servicios, setServicios] = React.useState([]);
+  const cargar = React.useCallback(async () => {
+    const [n, s] = await Promise.all([
+      sb.from("negocio").select("*").limit(1),
+      sb.from("servicios").select("*").order("orden").order("creado_en")
+    ]);
+    if (!n.error) setNegocio((n.data || [])[0] || null);
+    if (!s.error) setServicios(s.data || []);
+  }, []);
+  React.useEffect(() => {
+    const c = sb.channel("contenido-vivo")
+      .on("postgres_changes", { event: "*", schema: "public", table: "negocio" }, cargar)
+      .on("postgres_changes", { event: "*", schema: "public", table: "servicios" }, cargar)
+      .subscribe(st => { if (st === "SUBSCRIBED") cargar(); });
+    return () => sb.removeChannel(c);
+  }, [cargar]);
+  const guardarNegocio = async (campos, ok) => {
+    const { error } = await sb.from("negocio").update({ ...campos, actualizado_en: new Date().toISOString() }).eq("id", negocio.id);
+    if (error) avisar(error.message, true); else avisar(ok || "Guardado — publicado en la página");
+    cargar();
+  };
+  const guardarServicio = async (id, campos, ok) => {
+    const q = id ? sb.from("servicios").update(campos).eq("id", id) : sb.from("servicios").insert(campos);
+    const { error } = await q;
+    if (error) avisar(error.message, true); else avisar(ok || "Servicio guardado");
+    cargar();
+  };
+  const eliminarServicio = async s => {
+    const { error } = await sb.from("servicios").delete().eq("id", s.id);
+    if (error) avisar(error.message, true); else avisar("Eliminado de la carta: " + s.nombre);
+    cargar();
+  };
+  const subirFoto = async (srv, file) => {
+    if (!file) return;
+    if (file.size > 2.5 * 1024 * 1024) { avisar("La foto debe pesar menos de 2.5 MB", true); return; }
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const ruta = "servicios/" + srv.id + "." + ext;
+    const { error } = await sb.storage.from("publico").upload(ruta, file, { upsert: true, cacheControl: "3600", contentType: file.type || "image/jpeg" });
+    if (error) { avisar(error.message, true); return; }
+    const { data } = sb.storage.from("publico").getPublicUrl(ruta);
+    await guardarServicio(srv.id, { img: data.publicUrl + "?v=" + Date.now() }, "Foto publicada: " + srv.nombre);
+  };
+  return { negocio, servicios, guardarNegocio, guardarServicio, eliminarServicio, subirFoto };
 }
 
 /* ── Piezas ── */
@@ -887,13 +937,162 @@ function VistaProductos({ P }) {
   );
 }
 
-/* ── Vista: ajustes (fase 2) ── */
-function VistaAjustes() {
+/* ── Vista: ajustes — edita la página pública (fase 2) ── */
+const CATS = [["cortes", "Cortes"], ["spa", "Spa y masajes"], ["barberia", "Barbería"]];
+const ESTADOS = { disponible: ["Visible", "ok"], agotado: ["No disponible", "warn"], borrador: ["Borrador", ""] };
+const sigEstado = e => e === "disponible" ? "agotado" : e === "agotado" ? "borrador" : "disponible";
+const miniImg = im => /^https?:/.test(im || "") ? im : "/assets/servicios/" + im + ".jpeg";
+
+function VistaAjustes({ C }) {
+  const n = C.negocio;
+  const [contacto, setContacto] = React.useState(null);
+  const [horario, setHorario] = React.useState(null);
+  const [equipo, setEquipo] = React.useState(null);
+  const [form, setForm] = React.useState(null);
+  const [borrar, setBorrar] = React.useState(null);
+  React.useEffect(() => {
+    if (!n) return;
+    setContacto({ nombre: n.nombre || "", telefono: n.telefono || "", direccion: n.direccion || "" });
+    setHorario(Object.assign({ dias: "", etiqueta: "", apertura: 12, fin: 21, cierre: "", nota: "" }, n.horario || {}));
+    setEquipo((n.equipo || []).map(m => ({ ...m })));
+  }, [n && n.id, n && n.actualizado_en]);
+  if (!n || !contacto || !horario || !equipo) return <div className="card tenue">Cargando el contenido de la página…</div>;
+
+  const fld = (obj, setObj, campo, etiqueta, props) => (
+    <label className="fld"><span>{etiqueta}</span>
+      <input className="input" value={obj[campo] == null ? "" : obj[campo]} onChange={e => setObj({ ...obj, [campo]: props && props.type === "number" ? (e.target.value === "" ? "" : parseInt(e.target.value, 10)) : e.target.value })} {...(props || {})} />
+    </label>
+  );
+
   return (
-    <div className="card" style={{ maxWidth: 560, display: "grid", gap: 10 }}>
-      <h3 style={{ font: "700 16px var(--cond)", textTransform: "uppercase", letterSpacing: ".05em" }}>Carta, horarios y contacto</h3>
-      <p style={{ margin: 0 }}>La cola de turnos ya es compartida y en vivo entre todos los dispositivos. La edición de precios, servicios, horarios y contacto que publica directo a la página es la <b style={{ color: "var(--tx)" }}>fase 2</b> — por ahora esos cambios se piden al desarrollador.</p>
-    </div>
+    <React.Fragment>
+      <p className="tenue" style={{ margin: 0 }}>Todo lo que guardes aquí queda <b style={{ color: "var(--tx)" }}>publicado en la página pública</b> — los visitantes lo ven al entrar o recargar.</p>
+      <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", alignItems: "start" }}>
+
+        <div className="card" style={{ display: "grid", gap: 10 }}>
+          <h3 style={{ font: "700 15px var(--cond)", textTransform: "uppercase", letterSpacing: ".05em" }}>Contacto</h3>
+          {fld(contacto, setContacto, "nombre", "Nombre del negocio")}
+          {fld(contacto, setContacto, "telefono", "WhatsApp (con indicativo, sin signos)", { placeholder: "573205042058", inputMode: "numeric" })}
+          {fld(contacto, setContacto, "direccion", "Dirección")}
+          <button className="btn primary" style={{ justifySelf: "end" }} disabled={!contacto.telefono.trim() || contacto.nombre.trim().length < 2}
+            onClick={() => C.guardarNegocio({ nombre: contacto.nombre.trim(), telefono: contacto.telefono.replace(/\D/g, ""), direccion: contacto.direccion.trim() }, "Contacto publicado")}>
+            <Ic d={I.check} s={14} />Guardar y publicar</button>
+        </div>
+
+        <div className="card" style={{ display: "grid", gap: 10 }}>
+          <h3 style={{ font: "700 15px var(--cond)", textTransform: "uppercase", letterSpacing: ".05em" }}>Horario de atención</h3>
+          {fld(horario, setHorario, "dias", "Días", { placeholder: "De miércoles a lunes" })}
+          {fld(horario, setHorario, "etiqueta", "Texto visible", { placeholder: "12:00 p.m — 9:00 p.m" })}
+          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr" }}>
+            {fld(horario, setHorario, "apertura", "Abre (0–23)", { type: "number", min: 0, max: 23 })}
+            {fld(horario, setHorario, "fin", "Cierra (0–23)", { type: "number", min: 1, max: 23 })}
+          </div>
+          {fld(horario, setHorario, "cierre", "Día cerrado", { placeholder: "Martes cerrado" })}
+          {fld(horario, setHorario, "nota", "Nota")}
+          <button className="btn primary" style={{ justifySelf: "end" }} disabled={!(horario.apertura >= 0) || !(horario.fin > horario.apertura)}
+            onClick={() => C.guardarNegocio({ horario }, "Horario publicado")}>
+            <Ic d={I.check} s={14} />Guardar y publicar</button>
+        </div>
+
+        <div className="card" style={{ display: "grid", gap: 10, gridColumn: "1 / -1" }}>
+          <h3 style={{ font: "700 15px var(--cond)", textTransform: "uppercase", letterSpacing: ".05em" }}>Equipo en la página</h3>
+          <span className="tenue">Los nombres y especialidades que ve el público. (Las cuentas de acceso al panel son aparte.)</span>
+          <div style={{ display: "grid", gap: 8 }}>
+            {equipo.map((m, i) => (
+              <div key={i} style={{ display: "grid", gap: 8, gridTemplateColumns: "1fr 130px 1.4fr", alignItems: "end" }}>
+                {fld(m, v => setEquipo(equipo.map((x, j) => j === i ? v : x)), "nombre", i === 0 ? "Nombre" : "")}
+                {fld(m, v => setEquipo(equipo.map((x, j) => j === i ? v : x)), "rol", i === 0 ? "Rol" : "")}
+                {fld(m, v => setEquipo(equipo.map((x, j) => j === i ? v : x)), "especialidad", i === 0 ? "Especialidad" : "")}
+              </div>
+            ))}
+          </div>
+          <button className="btn primary" style={{ justifySelf: "end" }} disabled={equipo.some(m => !(m.nombre || "").trim())}
+            onClick={() => C.guardarNegocio({ equipo }, "Equipo publicado")}>
+            <Ic d={I.check} s={14} />Guardar y publicar</button>
+        </div>
+
+        {CATS.map(([cat, titulo]) => {
+          const filas = C.servicios.filter(s => s.categoria === cat);
+          return (
+            <div key={cat} className="card" style={{ display: "grid", gap: 10, gridColumn: "1 / -1" }}>
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <h3 style={{ font: "700 15px var(--cond)", textTransform: "uppercase", letterSpacing: ".05em", flex: 1 }}>Carta · {titulo}</h3>
+                <button className="btn ghost sm" onClick={() => setForm({ categoria: cat, nombre: "", precio: "", dur_min: "", descripcion: "", badge: "" })}><Ic d={I.mas} s={13} />Nuevo</button>
+              </div>
+              <div className="tabla-wrap">
+                <table className="tabla" style={{ minWidth: 640 }}>
+                  <thead><tr>{cat === "cortes" && <th style={{ width: 54 }}>Foto</th>}<th>Servicio</th><th>Precio</th><th>Duración</th><th>En la página</th><th style={{ textAlign: "right" }}>Acciones</th></tr></thead>
+                  <tbody>
+                    {filas.map(s => {
+                      const [etq, tono] = ESTADOS[s.estado] || ESTADOS.disponible;
+                      return (
+                        <tr key={s.id} className={s.estado === "borrador" ? "dim" : ""}>
+                          {cat === "cortes" && <td>{s.img ? <img src={miniImg(s.img)} alt="" style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 8, border: "1px solid var(--bd)" }} /> : <span className="tenue">—</span>}</td>}
+                          <td style={{ color: "var(--tx)", fontWeight: 600 }}>{s.nombre}{s.descripcion && <div className="tenue" style={{ fontWeight: 400, fontSize: 12 }}>{s.descripcion}</div>}</td>
+                          <td style={{ color: "var(--brand)", fontWeight: 700 }}>{fmtCOP(s.precio)}</td>
+                          <td>{s.dur_min} min</td>
+                          <td><button title="Cambiar visibilidad" onClick={() => C.guardarServicio(s.id, { estado: sigEstado(s.estado) }, ESTADOS[sigEstado(s.estado)][0] + ": " + s.nombre)}><span className={"badge " + tono}>{etq}</span></button></td>
+                          <td>
+                            <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                              {cat === "cortes" && (
+                                <label className="btn ghost sm" style={{ cursor: "pointer" }} title="Subir foto nueva">
+                                  <Ic d={I.foto} s={13} />Foto
+                                  <input type="file" accept="image/jpeg,image/png,image/webp" style={{ display: "none" }} onChange={e => { C.subirFoto(s, e.target.files[0]); e.target.value = ""; }} />
+                                </label>
+                              )}
+                              <button className="btn ghost sm" onClick={() => setForm({ id: s.id, categoria: cat, nombre: s.nombre, precio: String(s.precio), dur_min: String(s.dur_min), descripcion: s.descripcion || "", badge: s.badge || "" })}><Ic d={I.lapiz} s={13} />Editar</button>
+                              <button className="icon-btn" onClick={() => setBorrar(s)} aria-label={"Eliminar " + s.nombre}><Ic d={I.basura} s={14} /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {!filas.length && <tr><td colSpan={6} className="tenue" style={{ textAlign: "center", padding: 22 }}>Sin servicios en esta categoría.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {form && (
+        <div className="velo" onClick={() => setForm(null)}>
+          <div className="dialogo" onClick={e => e.stopPropagation()}>
+            <h3>{form.id ? "Editar servicio" : "Nuevo servicio"}</h3>
+            <label className="fld"><span>Nombre</span><input className="input" value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} placeholder="Skin fade" /></label>
+            <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr" }}>
+              <label className="fld"><span>Precio (COP)</span><input className="input" type="number" min="0" step="1000" value={form.precio} onChange={e => setForm({ ...form, precio: e.target.value })} placeholder="50000" /></label>
+              <label className="fld"><span>Duración (min)</span><input className="input" type="number" min="5" step="5" value={form.dur_min} onChange={e => setForm({ ...form, dur_min: e.target.value })} placeholder="45" /></label>
+            </div>
+            <label className="fld"><span>Descripción (opcional)</span><input className="input" value={form.descripcion} onChange={e => setForm({ ...form, descripcion: e.target.value })} /></label>
+            {form.categoria === "cortes" && <label className="fld"><span>Etiqueta (opcional)</span><input className="input" value={form.badge} onChange={e => setForm({ ...form, badge: e.target.value })} placeholder="Más pedido" /></label>}
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button className="btn ghost" onClick={() => setForm(null)}>Cancelar</button>
+              <button className="btn primary" disabled={form.nombre.trim().length < 2 || !(parseInt(form.precio, 10) >= 0) || !(parseInt(form.dur_min, 10) > 0)} onClick={() => {
+                C.guardarServicio(form.id || null, {
+                  categoria: form.categoria, nombre: form.nombre.trim(), precio: parseInt(form.precio, 10) || 0,
+                  dur_min: parseInt(form.dur_min, 10) || 45, descripcion: form.descripcion.trim() || null, badge: form.badge.trim() || null
+                }, form.id ? "Publicado: " + form.nombre : "En la carta: " + form.nombre);
+                setForm(null);
+              }}><Ic d={I.check} s={14} />Guardar y publicar</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {borrar && (
+        <div className="velo" onClick={() => setBorrar(null)}>
+          <div className="dialogo" onClick={e => e.stopPropagation()}>
+            <h3>Eliminar de la carta</h3>
+            <p style={{ margin: 0 }}><b style={{ color: "var(--tx)" }}>{borrar.nombre}</b> desaparece de la página pública. Si es temporal, mejor pásalo a "No disponible" o "Borrador".</p>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button className="btn ghost" onClick={() => setBorrar(null)}>Cancelar</button>
+              <button className="btn danger" onClick={() => { C.eliminarServicio(borrar); setBorrar(null); }}><Ic d={I.basura} s={14} />Eliminar</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </React.Fragment>
   );
 }
 
@@ -941,6 +1140,7 @@ function Shell({ sesion, salir }) {
   const T = useTurnos(avisar);
   const P = useProductos(avisar);
   const V = useVentas(avisar);
+  const C = useContenido(avisar);
   const [vista, setVista] = React.useState(admin ? "cola" : "midia");
   const titulo = { cola: "Cola de hoy", midia: "Mi día", resumen: "Resumen del día", productos: "Productos", sala: "Pantalla de sala", ajustes: "Ajustes" }[vista];
   const fecha = new Date().toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" });
@@ -985,7 +1185,7 @@ function Shell({ sesion, salir }) {
         {vista === "resumen" && admin && <VistaResumen T={T} V={V} />}
         {vista === "productos" && admin && <VistaProductos P={P} />}
         {vista === "sala" && <VistaSala T={T} />}
-        {vista === "ajustes" && admin && <VistaAjustes />}
+        {vista === "ajustes" && admin && <VistaAjustes C={C} />}
       </main>
       {toastsUI}
     </div>

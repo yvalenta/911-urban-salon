@@ -24,7 +24,7 @@ Landing pública y panel administrativo de turnos de la barbería **911 Urban Sa
 │   ├── icon-barber-pole.png
 │   ├── texture-graffiti-black.jpeg
 │   └── servicios/        ← fotos de los cortes (skin-fade, wolf-cut, crop-, fade-texturizado)
-├── images/               ← flyers fuente de la marca (no los usa el sitio; son el origen de assets/)
+├── images/optimized/     ← flyers fuente comprimidos (no los usa el sitio; origen de assets/)
 ├── CNAME                 ← dominio de GitHub Pages (911-urban-salon.ynt.codes)
 └── .claude/launch.json   ← servidor local de prueba (python http.server 8931)
 ```
@@ -58,10 +58,19 @@ proyecto trunca archivos a 256 KiB, por lo que las imágenes de `assets/` se
 reconstruyeron desde los flyers de `images/` (la textura es un recorte exacto
 del collage; el logo es el lockup en papel).
 
-## Contenido editable (`window.DATA_911`)
+## Contenido editable
 
-Vive dentro de `landing.html` (bloque «Datos de contenido») y se copia también
-en `admin/index.html`. Campos:
+**Desde la fase 2 el contenido vive en Supabase** y se edita en `/admin` →
+**Ajustes** (rol admin): contacto (nombre, WhatsApp, dirección), horario,
+equipo visible y la carta completa (precios, duraciones, descripciones,
+visibilidad, servicios nuevos y **fotos de los cortes**, que se suben a
+Supabase Storage). Guardar = publicar: la landing lee las tablas `negocio` y
+`servicios` con la anon key al cargar.
+
+El objeto `window.DATA_911` de `landing.html` queda como **respaldo**: es lo
+que se muestra si la base no responde (y lo que ve un visitante sin conexión
+momentánea). Tras cambios grandes conviene actualizarlo para que el respaldo
+no quede viejo. Campos:
 
 - `telefono` — WhatsApp en formato internacional sin signos (`573205042058`).
 - `direccion` — Cra. 32, Mall La Visitación, Transversal Inferior — El Poblado, Medellín.
@@ -164,24 +173,25 @@ y abrir `http://localhost:8931/` (o `/admin/`).
 
 | Tarea | Cómo |
 |---|---|
-| Cambiar precio/servicio/horario/teléfono | Editar `DATA_911` en `landing.html`, `cp landing.html index.html`, replicar el bloque de datos en `admin/index.html`, commit y push |
-| Ocultar un servicio o marcarlo no disponible | Añadir `estado: "borrador"` o `estado: "agotado"` al servicio en `DATA_911` |
-| Nueva foto de corte | Subir el JPEG a `assets/servicios/` y referenciarla en `cortes[].img` (sin extensión) |
-| Cambiar contraseña del panel | Ver sección del panel (regenerar `HASH_ACCESO`) |
-| Renombrar barberos "de verdad" | Editar `equipo` en `DATA_911` (lo del panel es solo local) |
+| Cambiar precio/servicio/horario/teléfono/dirección | `/admin` → **Ajustes** → "Guardar y publicar" (sin tocar código) |
+| Ocultar un servicio o marcarlo no disponible | Ajustes → Carta → clic en la etiqueta de visibilidad (Visible → No disponible → Borrador) |
+| Nueva foto de corte | Ajustes → Carta · Cortes → botón **Foto** (se sube a Storage, máx 2.5 MB) |
+| Renombrar el equipo visible en la página | Ajustes → "Equipo en la página" |
+| Cambiar contraseña del panel | `psql` (ver sección del panel) |
+| Actualizar el contenido de respaldo | Editar `DATA_911` en `landing.html` y `cp landing.html index.html` |
 
-## Limitaciones conocidas (demo sin backend)
+## Limitaciones conocidas
 
-- La **cola del panel ya es real y compartida** (Supabase). Lo que sigue
-  simulado: la disponibilidad de franjas del asistente público y el registro de
-  reservas de clientes desde la landing (fase 3 — hoy llegan por WhatsApp y el
-  admin las crea con "Nuevo turno").
-- La edición de carta/horarios/contacto que publica directo a la página es la
-  fase 2; por ahora esos cambios se hacen en `DATA_911`.
+- La disponibilidad de franjas del asistente público sigue **simulada** y las
+  reservas de clientes desde la landing no escriben en la base (fase 3 — hoy
+  llegan por WhatsApp y el admin las crea con "Nuevo turno").
+- La landing lee el contenido al cargar (no se re-renderiza en vivo mientras
+  el visitante mira la página; basta recargar).
 
 ## Pendientes
 
-- [ ] Nombre real de la masajista (hoy "Masajista por confirmar").
+- [ ] Nombre real de la masajista (hoy "Masajista por confirmar") — ya editable en Ajustes → Equipo.
 - [ ] Contraseña definitiva del panel.
-- [ ] Duraciones reales de trenzas/tintura/afeitado (90/90/30 min son estimadas).
-- [ ] Backend de reservas (opcional).
+- [ ] Duraciones reales de trenzas/tintura/afeitado (90/90/30 min son estimadas) — editables en Ajustes.
+- [ ] Fase 3: reservas reales desde la landing.
+- [ ] White-label: paletas de color y logo editables (columna `tema` en `negocio` ya reservada).
