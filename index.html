@@ -1848,7 +1848,7 @@ function Hero({
       gap: "var(--sp-8)",
       marginTop: "var(--sp-4)"
     }
-  }, [["6", "Barberos en silla"], ["2", "Jornadas al día"], ["6", "Días a la semana"]].map(([v, l]) => /*#__PURE__*/React.createElement("div", {
+  }, [["3", "Barberos en silla"], ["2", "Jornadas al día"], ["6", "Días a la semana"]].map(([v, l]) => /*#__PURE__*/React.createElement("div", {
     key: l,
     style: {
       display: "grid",
@@ -2658,6 +2658,10 @@ function TurnosAsistente({
     nombre: s.nombre,
     dur: s.dur,
     spa: true
+  })), ...(D.barberia || []).map(b => ({
+    nombre: b.nombre,
+    dur: b.dur,
+    spa: false
   }))];
   const [paso, setPaso] = React.useState(0);
   const [servicio, setServicio] = React.useState(null);
@@ -3083,12 +3087,12 @@ try { (() => {
    teléfono y la dirección son marcadores de posición: reemplázalos por los
    reales antes de publicar. */
 window.DATA_911 = {
-  telefono: "573000000000",
+  telefono: "573205042058",
   direccion: "Reemplazar por la dirección real",
   categorias: [{
     icon: "scissors",
     titulo: "Estilos de corte",
-    texto: "Fades, texturizados y clásicos ejecutados con línea limpia."
+    texto: "Cualquier corte: $50.000 · Trenzas: $100.000 · Tintura: $150.000."
   }, {
     icon: "sparkles",
     titulo: "Tipos de faciales",
@@ -3096,61 +3100,61 @@ window.DATA_911 = {
   }, {
     icon: "hand-heart",
     titulo: "Tipos de masajes",
-    texto: "Spa de pies, piedras calientes, facial y masoterapia."
+    texto: "Spa de pies, piedras calientes, facial y masoterapia. Sesión: $150.000."
   }, {
     icon: "spray-can",
     titulo: "Estilos de afeitado",
-    texto: "Toalla caliente, navaja y perfilado de barba."
+    texto: "Toalla caliente, navaja y perfilado de barba. Afeitado: $70.000."
   }],
   cortes: [{
     img: "skin-fade",
     nombre: "Skin fade",
     desc: "Degradado a piel con línea marcada.",
-    precio: "$35.000",
+    precio: "$50.000",
     dur: "45 min",
     badge: "Más pedido"
   }, {
     img: "wolf-cut",
     nombre: "Wolf cut",
     desc: "Capas desconectadas y volumen arriba.",
-    precio: "$42.000",
+    precio: "$50.000",
     dur: "60 min"
   }, {
     img: "crop-texturizado",
     nombre: "Crop texturizado",
     desc: "Flequillo corto con textura y desvanecido.",
-    precio: "$35.000",
+    precio: "$50.000",
     dur: "45 min"
   }, {
     img: "fade-texturizado",
     nombre: "Fade texturizado",
     desc: "Fade medio con acabado desordenado.",
-    precio: "$38.000",
+    precio: "$50.000",
     dur: "50 min"
   }],
   spa: [{
     icon: "footprints",
     nombre: "Spa de pies",
     desc: "Limpieza, higienización e hidratación.",
-    precio: "$45.000",
+    precio: "$150.000",
     dur: "50 min"
   }, {
     icon: "flame",
     nombre: "Masaje relajante",
     desc: "Con piedras calientes.",
-    precio: "$70.000",
+    precio: "$150.000",
     dur: "60 min"
   }, {
     icon: "smile",
     nombre: "Masaje facial",
     desc: "Limpieza e hidratación.",
-    precio: "$40.000",
+    precio: "$150.000",
     dur: "40 min"
   }, {
     icon: "waves",
     nombre: "Masoterapia",
     desc: "Técnicas terapéuticas para alivio de dolores, estrés y bienestar general.",
-    precio: "$80.000",
+    precio: "$150.000",
     dur: "75 min"
   }],
   facial: ["Limpieza", "Exfoliación", "Vaporización", "Extracción de comedones", "Mascarilla", "Masaje facial", "Hidratación y protección"],
@@ -3612,32 +3616,37 @@ Object.assign(window, {
    teléfono y la dirección son marcadores de posición: reemplázalos por los
    reales antes de publicar. */
 window.DATA_911 = {
-  telefono: "573000000000",
+  telefono: "573205042058",
   direccion: "Reemplazar por la dirección real",
   categorias: [
-    { icon: "scissors", titulo: "Estilos de corte", texto: "Fades, texturizados y clásicos ejecutados con línea limpia." },
+    { icon: "scissors", titulo: "Estilos de corte", texto: "Cualquier corte: $50.000 · Trenzas: $100.000 · Tintura: $150.000." },
     { icon: "sparkles", titulo: "Tipos de faciales", texto: "Limpieza facial para hombres en siete pasos." },
-    { icon: "hand-heart", titulo: "Tipos de masajes", texto: "Spa de pies, piedras calientes, facial y masoterapia." },
-    { icon: "spray-can", titulo: "Estilos de afeitado", texto: "Toalla caliente, navaja y perfilado de barba." }
+    { icon: "hand-heart", titulo: "Tipos de masajes", texto: "Spa de pies, piedras calientes, facial y masoterapia. Sesión: $150.000." },
+    { icon: "spray-can", titulo: "Estilos de afeitado", texto: "Toalla caliente, navaja y perfilado de barba. Afeitado: $70.000." }
   ],
   cortes: [
-    { img: "skin-fade", nombre: "Skin fade", desc: "Degradado a piel con línea marcada.", precio: "$35.000", dur: "45 min", badge: "Más pedido" },
-    { img: "wolf-cut", nombre: "Wolf cut", desc: "Capas desconectadas y volumen arriba.", precio: "$42.000", dur: "60 min" },
-    { img: "crop-texturizado", nombre: "Crop texturizado", desc: "Flequillo corto con textura y desvanecido.", precio: "$35.000", dur: "45 min" },
-    { img: "fade-texturizado", nombre: "Fade texturizado", desc: "Fade medio con acabado desordenado.", precio: "$38.000", dur: "50 min" }
+    { img: "skin-fade", nombre: "Skin fade", desc: "Degradado a piel con línea marcada.", precio: "$50.000", dur: "45 min", badge: "Más pedido" },
+    { img: "wolf-cut", nombre: "Wolf cut", desc: "Capas desconectadas y volumen arriba.", precio: "$50.000", dur: "60 min" },
+    { img: "crop-texturizado", nombre: "Crop texturizado", desc: "Flequillo corto con textura y desvanecido.", precio: "$50.000", dur: "45 min" },
+    { img: "fade-texturizado", nombre: "Fade texturizado", desc: "Fade medio con acabado desordenado.", precio: "$50.000", dur: "50 min" }
   ],
   spa: [
-    { icon: "footprints", nombre: "Spa de pies", desc: "Limpieza, higienización e hidratación.", precio: "$45.000", dur: "50 min" },
-    { icon: "flame", nombre: "Masaje relajante", desc: "Con piedras calientes.", precio: "$70.000", dur: "60 min" },
-    { icon: "smile", nombre: "Masaje facial", desc: "Limpieza e hidratación.", precio: "$40.000", dur: "40 min" },
-    { icon: "waves", nombre: "Masoterapia", desc: "Técnicas terapéuticas para alivio de dolores, estrés y bienestar general.", precio: "$80.000", dur: "75 min" }
+    { icon: "footprints", nombre: "Spa de pies", desc: "Limpieza, higienización e hidratación.", precio: "$150.000", dur: "50 min" },
+    { icon: "flame", nombre: "Masaje relajante", desc: "Con piedras calientes.", precio: "$150.000", dur: "60 min" },
+    { icon: "smile", nombre: "Masaje facial", desc: "Limpieza e hidratación.", precio: "$150.000", dur: "40 min" },
+    { icon: "waves", nombre: "Masoterapia", desc: "Técnicas terapéuticas para alivio de dolores, estrés y bienestar general.", precio: "$150.000", dur: "75 min" }
+  ],
+  barberia: [
+    { nombre: "Trenzas", dur: "90 min", precio: "$100.000" },
+    { nombre: "Tintura", dur: "90 min", precio: "$150.000" },
+    { nombre: "Afeitado clásico", dur: "30 min", precio: "$70.000" }
   ],
   facial: ["Limpieza", "Exfoliación", "Vaporización", "Extracción de comedones", "Mascarilla", "Masaje facial", "Hidratación y protección"],
   equipo: [
-    { nombre: "Kevin R.", rol: "Barbero senior", especialidad: "Fades y diseños a navaja", estado: "libre", proximo: "11:30" },
-    { nombre: "Duvan S.", rol: "Barbero", especialidad: "Clásicos y perfilado de barba", estado: "turno", proximo: "14:00" },
-    { nombre: "Laura P.", rol: "Masajista", especialidad: "Piedras calientes y masoterapia", estado: "libre", proximo: "10:00" },
-    { nombre: "Mateo G.", rol: "Barbero junior", especialidad: "Crop y texturizados", estado: "ocupado" }
+    { nombre: "Samuel", rol: "Barbero", especialidad: "Fades y cortes clásicos", estado: "libre", proximo: "11:30" },
+    { nombre: "Mateo", rol: "Barbero", especialidad: "Crop y texturizados", estado: "turno", proximo: "14:00" },
+    { nombre: "Julián", rol: "Barbero", especialidad: "Trenzas y tintura", estado: "libre", proximo: "10:30" },
+    { nombre: "Masajista por confirmar", rol: "Masajista", especialidad: "Piedras calientes y masoterapia", estado: "libre", proximo: "10:00" }
   ],
   flujo: [
     { n: "1", t: "Saludo y bienvenida", d: "Se recibe al cliente cordialmente y se le ofrece una experiencia profesional." },
