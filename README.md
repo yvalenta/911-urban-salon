@@ -64,7 +64,7 @@ Vive dentro de `landing.html` (bloque «Datos de contenido») y se copia tambié
 en `admin/index.html`. Campos:
 
 - `telefono` — WhatsApp en formato internacional sin signos (`573205042058`).
-- `direccion` — ⚠️ aún es marcador de posición.
+- `direccion` — Cra. 32, Mall La Visitación, Transversal Inferior — El Poblado, Medellín.
 - `horario` — `dias`, `etiqueta` (texto visible), `apertura`/`fin` (horas 0-23
   que generan las franjas del asistente), `cierre`, `nota`.
 - `cortes`, `spa`, `barberia` — la carta: `nombre`, `precio`, `dur` y opcional
@@ -155,7 +155,6 @@ y abrir `http://localhost:8931/` (o `/admin/`).
 ## Pendientes
 
 - [ ] Nombre real de la masajista (hoy "Masajista por confirmar").
-- [ ] Dirección real del local en `DATA_911.direccion`.
 - [ ] Contraseña definitiva del panel.
 - [ ] Duraciones reales de trenzas/tintura/afeitado (90/90/30 min son estimadas).
 - [ ] Backend de reservas (opcional).
