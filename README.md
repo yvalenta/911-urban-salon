@@ -6,7 +6,7 @@ Landing pública y panel administrativo de turnos de la barbería **911 Urban Sa
 | Superficie | URL | Qué es |
 |---|---|---|
 | Landing | https://911-urban-salon.ynt.codes | Página pública: carta de servicios, equipo, horarios y asistente de turnos con asignación automática |
-| Panel admin | https://911-urban-salon.ynt.codes/admin | Cola del día, pantalla de sala y edición de carta/horarios/equipo (requiere login) |
+| Panel admin | https://911-urban-salon.ynt.codes/admin | Cola del día en vivo, caja y resumen, productos, pantalla de sala y edición de la página pública (requiere login) |
 
 ---
 
@@ -34,7 +34,15 @@ Landing pública y panel administrativo de turnos de la barbería **911 Urban Sa
 
 ## Arquitectura
 
-Sitio **estático sin build step**. Cada HTML es autocontenido y lleva, en orden:
+Sitio **estático sin build step** (GitHub Pages) + **Supabase** como backend
+(Postgres, Auth, Realtime y Storage). Son dos aplicaciones:
+
+- **`landing.html`/`index.html`** — la página pública, construida sobre el
+  bundle del design system (estructura abajo).
+- **`admin/index.html`** — el panel: app React propia (estilo dashboard) con
+  `supabase-js` por CDN; no usa el bundle del design system.
+
+La landing es autocontenida y lleva, en orden:
 
 1. **Tokens CSS** del design system (colores, tipografía, espaciado, efectos) +
    una capa responsive al final del `<style>`.
@@ -47,10 +55,15 @@ Sitio **estático sin build step**. Cada HTML es autocontenido y lleva, en orden
    del namespace (`__ds_ns.X = …`) están **antes** de los bloques `ui_kits/` —
    si se regenera desde el proyecto de diseño hay que conservar ese orden, o las
    secciones capturan `undefined`.
-4. **Datos** (`window.DATA_911`): todo el contenido editable del sitio.
-5. **Overrides** (`<script type="text/babel">`, solo la landing): versiones
-   mejoradas de TurnosAsistente (multiservicio), Cortes, Spa, Horarios y Footer
-   que reemplazan a las del bundle. El montaje final renderiza `<App/>`.
+4. **Datos de respaldo** (`window.DATA_911`): el contenido embebido que se
+   muestra si la base no responde.
+5. **Sincronizador de contenido**: fetch anónimo a las tablas `negocio` y
+   `servicios` al cargar (espera hasta ~1.2 s antes de montar; si llega más
+   tarde, re-renderiza). Mapea las filas al formato de `DATA_911` y rearma
+   los textos de prosa que citan precios u horarios.
+6. **Overrides** (`<script type="text/babel">`): versiones mejoradas de
+   TurnosAsistente (multiservicio), Cortes, Spa, Horarios y Footer que
+   reemplazan a las del bundle. El montaje final renderiza `<App/>`.
 
 El diseño proviene del proyecto **"911 Urban Salón Design System"** en
 claude.ai/design (id `1e06a957-8ab0-4045-96ed-9726db0626f4`). La API de ese
@@ -133,16 +146,25 @@ minutos, Empezar siguiente / Pausar / Terminar (con confirmación de atención
 y productos) / No atendido / Devolver, y "Vender producto" suelto. RLS
 impide tocar turnos ajenos; cada venta queda a nombre de quien la registró.
 
-Vistas antiguas:
+**Sala** (ambos roles) — monitor para el local: turno en silla en gigante y
+la fila del día.
 
-- **Pantalla de sala** — monitor para el local: turno en silla en gigante y la fila.
-- **Panel del barbero** — cola del día con *Llamar*/*Terminar*, botón
-  **"Siguiente turno"**, y **"¿El turno se alargó?"** (+10/+15/+30 min) que corre
-  las citas en espera mostrando la hora original tachada y el retraso acumulado.
-  El equipo se puede **renombrar** (lápiz).
-- **Servicios** — horario de atención editable y carta por categorías: editar
-  nombre/precio/duración, crear o eliminar servicios y ciclar su estado
-  (Visible → No disponible → Borrador) con un clic en la etiqueta.
+**Ajustes** (rol admin) — edita la página pública; ver "Contenido editable".
+
+### Base de datos (Supabase, proyecto `ssrrkcshhrggukknkoua`)
+
+| Tabla | Qué guarda | Escritura |
+|---|---|---|
+| `turnos` | Cola del día: estados espera/silla/pausado/listo/cancelado, tiempos, motivo de no atención | admin; barbero solo sus turnos |
+| `productos` | Catálogo comercializable (gel, cera…) | admin |
+| `ventas` | Ventas de productos del día, ligadas o no a un turno | inserta quien vende; anula admin |
+| `negocio` | Fila única: nombre, WhatsApp, dirección, horario, equipo (y `tema`, reservado) | admin |
+| `servicios` | La carta pública: categoría, precio, duración, estado, foto | admin |
+
+Todas con RLS (rol desde `app_metadata` del JWT — no editable por el usuario)
+y en la publicación Realtime. `negocio` y `servicios` se leen anónimamente
+(son el contenido público). El bucket de Storage `publico` guarda las fotos
+subidas desde Ajustes: lectura pública, escritura solo admin.
 
 **Cambiar una contraseña** (requiere `.env` local con `DATABASE_URL`):
 
