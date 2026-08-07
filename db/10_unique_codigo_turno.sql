@@ -1,0 +1,22 @@
+-- Unicidad del código visible de turno (A-0XX) por día.
+--
+-- Por qué: el código se calcula en el CLIENTE (admin/index.html toma el
+-- máximo de la cola que tiene cargada y le suma 1) y recién después se
+-- inserta. Dos admins creando turnos a la vez leen la misma cola, calculan
+-- el mismo "A-0XX" y ambos inserts pasan: quedan dos turnos con el mismo
+-- código el mismo día, y todo lo que identifica turnos por su código
+-- (pantalla de sala, WhatsApp con el cliente) se vuelve ambiguo.
+--
+-- Este índice convierte esa carrera en un error de inserción (23505,
+-- unique_violation) que el cliente perdedor puede resolver reintentando
+-- con el número siguiente.
+--
+-- Única por (fecha, codigo) y no por codigo solo: la numeración reinicia
+-- cada día, así que el "A-014" de hoy no debe chocar con el de ayer.
+--
+-- Índice único en vez de "alter table ... add constraint": Postgres no
+-- tiene "add constraint if not exists", y el índice único da exactamente
+-- la misma garantía de forma idempotente (esta migración puede correrse
+-- las veces que haga falta sin fallar).
+create unique index if not exists turnos_fecha_codigo_key
+  on public.turnos (fecha, codigo);

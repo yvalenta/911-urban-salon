@@ -1,0 +1,66 @@
+# Chequeo de humo del sitio publicado y su backend.
+#
+# Existe porque las tres piezas pueden caerse sin que nadie toque el repo:
+# GitHub Pages puede dejar de servir, el DNS/proxy de Cloudflare puede romper
+# el dominio, y Supabase puede pausar el proyecto por inactividad (plan
+# gratuito). Nada de eso genera un commit, así que este cron es la única
+# alarma: si un paso falla, el job falla y GitHub notifica por correo al
+# dueño del repo (Settings → Notifications → Actions).
+#
+# Ojo: GitHub desactiva los workflows con schedule tras ~60 días sin
+# actividad en el repo; si el proyecto entra en pausa larga, hay que
+# reactivarlo desde la pestaña Actions.
+name: Chequeo de humo
+
+on:
+  schedule:
+    # Cada 30 minutos. GitHub no garantiza puntualidad exacta en los cron,
+    # pero para avisar de una caída basta este orden de magnitud.
+    - cron: "*/30 * * * *"
+  # Para correrlo a mano desde la pestaña Actions (p. ej. tras un deploy).
+  workflow_dispatch:
+
+# Solo hace GETs públicos; no necesita leer el repo ni permiso alguno.
+permissions: {}
+
+jobs:
+  humo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Sin actions/checkout: los chequeos van contra el sitio ya publicado,
+    # no contra el código del repo, así que clonar sería tiempo perdido.
+    steps:
+      - name: Landing responde y es la nuestra
+        # El grep de "911" descarta falsos 200: una página de error de
+        # Cloudflare o un dominio mal apuntado también pueden responder 200,
+        # pero no traen la marca del salón en el HTML.
+        run: |
+          set -euo pipefail
+          cuerpo=$(curl -fsSL --max-time 20 --retry 2 https://911-urban-salon.ynt.codes)
+          # Herestring y no pipe: con pipefail, "echo | grep -q" puede fallar
+          # por SIGPIPE cuando grep corta al primer hallazgo.
+          grep -q "911" <<< "$cuerpo"
+
+      - name: Panel /admin responde
+        # El panel es una página aparte (admin/index.html); Pages puede
+        # servir la landing bien y aun así romper esta ruta (un rename, un
+        # 404.html que la tape). El personal depende de ella a diario.
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 20 --retry 2 -o /dev/null https://911-urban-salon.ynt.codes/admin/
+
+      - name: Supabase responde con el contenido del negocio
+        # La landing monta con el respaldo embebido y se corrige con la base;
+        # si esta lectura falla, el sitio "se ve bien" pero muestra contenido
+        # posiblemente viejo y el panel de turnos queda inservible. Por eso
+        # se vigila la API además del sitio. La apikey es la publishable key,
+        # pública por diseño (la misma que va embebida en index.html): solo
+        # da lectura anónima vía RLS, no es un secreto.
+        run: |
+          set -euo pipefail
+          respuesta=$(curl -fsS --max-time 20 --retry 2 \
+            -H "apikey: sb_publishable_zLevCihGrnQqqlgM7mXbrw_HyBtvzIj" \
+            "https://ssrrkcshhrggukknkoua.supabase.co/rest/v1/negocio?select=nombre&limit=1")
+          # "[]" también es un 200: significaría tabla vacía o RLS rota, y la
+          # landing quedaría clavada en el respaldo embebido sin avisar.
+          grep -q '"nombre"' <<< "$respuesta"
