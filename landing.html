@@ -3872,7 +3872,16 @@ function TurnosAsistente({ servicioInicial }) {
                 <Badge tone="libre" dot>Turno confirmado</Badge>
                 <TurnoTicket {...turno} />
                 <div style={{ display: "flex", gap: "var(--sp-3)", flexWrap: "wrap", justifyContent: "center" }}>
-                  <Button variant="secondary" as="a" href={"https://wa.me/" + D.telefono} iconLeft={<Icon name="message-circle" size={16} />}>Enviar por WhatsApp</Button>
+                  <Button variant="secondary" as="a" target="_blank" rel="noopener"
+                    href={"https://wa.me/" + D.telefono + "?text=" + encodeURIComponent(
+                      "Hola, soy " + nombre + ". Pedí un turno en la página:\n" +
+                      "Código: " + turno.codigo + "\n" +
+                      "Servicio: " + turno.servicio + "\n" +
+                      "Con: " + turno.barbero + "\n" +
+                      "Día: " + turno.fecha + "\n" +
+                      "Hora: " + turno.hora + "\n" +
+                      "Mi celular: " + tel)}
+                    iconLeft={<Icon name="message-circle" size={16} />}>Enviar por WhatsApp</Button>
                   <Button variant="ghost" onClick={() => { setPaso(0); setTurno(null); setServicio(null); setBarbero(null); setHora(null); setAuto(false); }}>Pedir otro</Button>
                 </div>
               </div>
