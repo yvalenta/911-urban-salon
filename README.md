@@ -13,8 +13,8 @@ Landing pública y panel administrativo de turnos de la barbería **911 Urban Sa
 ## Estructura del repositorio
 
 ```
-├── index.html            ← página pública (COPIA EXACTA de landing.html)
-├── landing.html          ← misma página; archivo de trabajo original
+├── index.html            ← página pública (ÚNICO original; editar aquí)
+├── landing.html          ← solo redirige a / (por enlaces viejos)
 ├── admin/
 │   └── index.html        ← panel administrativo (sirve en /admin)
 ├── admin.html            ← solo redirige a /admin/
@@ -29,15 +29,16 @@ Landing pública y panel administrativo de turnos de la barbería **911 Urban Sa
 └── .claude/launch.json   ← servidor local de prueba (python http.server 8931)
 ```
 
-> ⚠️ **`index.html` y `landing.html` deben ser idénticos.** Tras editar
-> `landing.html`, ejecuta `cp landing.html index.html` antes de commitear.
+> `landing.html` fue una copia exacta de `index.html` que había que sincronizar
+> a mano; desde 2026-08-06 **`index.html` es el único original** y `landing.html`
+> solo redirige.
 
 ## Arquitectura
 
 Sitio **estático sin build step** (GitHub Pages) + **Supabase** como backend
 (Postgres, Auth, Realtime y Storage). Son dos aplicaciones:
 
-- **`landing.html`/`index.html`** — la página pública, construida sobre el
+- **`index.html`** — la página pública, construida sobre el
   bundle del design system (estructura abajo).
 - **`admin/index.html`** — el panel: app React propia (estilo dashboard) con
   `supabase-js` por CDN; no usa el bundle del design system.
@@ -80,7 +81,7 @@ visibilidad, servicios nuevos y **fotos de los cortes**, que se suben a
 Supabase Storage). Guardar = publicar: la landing lee las tablas `negocio` y
 `servicios` con la anon key al cargar.
 
-El objeto `window.DATA_911` de `landing.html` queda como **respaldo**: es lo
+El objeto `window.DATA_911` de `index.html` queda como **respaldo**: es lo
 que se muestra si la base no responde (y lo que ve un visitante sin conexión
 momentánea). Tras cambios grandes conviene actualizarlo para que el respaldo
 no quede viejo. Campos:
@@ -200,7 +201,7 @@ y abrir `http://localhost:8931/` (o `/admin/`).
 | Nueva foto de corte | Ajustes → Carta · Cortes → botón **Foto** (se sube a Storage, máx 2.5 MB) |
 | Renombrar el equipo visible en la página | Ajustes → "Equipo en la página" |
 | Cambiar contraseña del panel | `psql` (ver sección del panel) |
-| Actualizar el contenido de respaldo | Editar `DATA_911` en `landing.html` y `cp landing.html index.html` |
+| Actualizar el contenido de respaldo | `ruby ops/regenerar_respaldo.rb` (reescribe el bloque `DATA_911` de `index.html` desde la base) |
 
 ## Limitaciones conocidas
 

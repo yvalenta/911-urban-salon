@@ -1,2 +1,6 @@
 .DS_Store
 .env
+# Documentos personales que a veces caen en esta carpeta por error:
+# este repo es PÚBLICO, nada con datos personales puede entrar al índice.
+Cuenta_de_cobro*
+*.pdf
