@@ -109,10 +109,19 @@ no quede viejo. Campos:
 
 - Se pueden combinar varios servicios en un turno; **solo un corte** (elegir un
   segundo corte reemplaza al primero). Muestra total y duración sumada.
-- Franjas cada 45 min entre `horario.apertura` y `horario.fin`; los martes se
-  omiten. La ocupación es **simulada** (hash determinista) — ver "Limitaciones".
-- "Enviar por WhatsApp" abre el chat del salón con el detalle del turno
-  (nombre, código, servicios, total, barbero, día, hora y celular del cliente).
+- **La disponibilidad es real (fase 3)**: franjas cada 45 min entre
+  `horario.apertura` y `horario.fin` (martes cerrado), hoy arranca en la hora
+  actual, se tachan las que pisan turnos activos del barbero (`cola_publica`,
+  refrescada cada 45 s) y aparece **"Ahora"** cuando el salón está abierto y
+  no hay nadie esperando ni agendado que choque.
+- **Confirmar escribe el turno en la base** (`reservar_turno`): el servidor
+  valida, serializa requests simultáneos por barbero+día (advisory lock),
+  rechaza solapes y genera el código — el panel lo ve al instante por
+  Realtime. Si el hueco se ocupó un segundo antes, el asistente lo dice y
+  re-pinta las franjas.
+- "Enviar por WhatsApp" abre el chat del salón con el detalle del turno ya
+  reservado (nombre, código real, servicios, total, barbero, día, hora y
+  celular del cliente).
 
 ## Panel administrativo (`/admin`) — en vivo con Supabase
 
@@ -205,16 +214,16 @@ y abrir `http://localhost:8931/` (o `/admin/`).
 
 ## Limitaciones conocidas
 
-- La disponibilidad de franjas del asistente público sigue **simulada** y las
-  reservas de clientes desde la landing no escriben en la base (fase 3 — hoy
-  llegan por WhatsApp y el admin las crea con "Nuevo turno").
-- La landing lee el contenido al cargar (no se re-renderiza en vivo mientras
-  el visitante mira la página; basta recargar).
+- La **cola en vivo de la landing se refresca por sondeo** (cada 45 s y al
+  volver la pestaña al frente), no por websocket: suficiente para elegir hueco,
+  y el choque real lo resuelve el servidor al reservar.
+- El contenido editable (carta/horarios) se lee al cargar la página; basta
+  recargar para ver cambios del panel.
 
 ## Pendientes
 
 - [ ] Nombre real de la masajista (hoy "Masajista por confirmar") — ya editable en Ajustes → Equipo.
 - [ ] Contraseña definitiva del panel.
 - [ ] Duraciones reales de trenzas/tintura/afeitado (90/90/30 min son estimadas) — editables en Ajustes.
-- [ ] Fase 3: reservas reales desde la landing.
+- [x] Fase 3: reservas reales desde la landing (2026-08-10, `db/12`).
 - [ ] White-label: paletas de color y logo editables (columna `tema` en `negocio` ya reservada).

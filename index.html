@@ -3824,18 +3824,63 @@ function proximosDias(n = 5) {
   return out;
 }
 
-function hash(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
-function construirJornadas(fechaKey, barbero, esSpa) {
+/* ── Fase 3: cola real y reservas reales ──────────────────────────────────
+   La disponibilidad ya no se simula: sale de cola_publica (la vista saneada
+   de la cola del día — sin nombres ni teléfonos) y la reserva la escribe
+   reservar_turno en el servidor, que serializa requests simultáneos por
+   barbero+día y rechaza solapes. db/12_reservas_landing.sql. */
+const SB_URL_911 = "https://ssrrkcshhrggukknkoua.supabase.co";
+const SB_KEY_911 = "sb_publishable_zLevCihGrnQqqlgM7mXbrw_HyBtvzIj"; // pública por diseño
+const hoyLocalISO = () => new Date().toLocaleDateString("en-CA");
+const aMin911 = h => { const [H, M] = String(h || "").slice(0, 5).split(":").map(Number); return (H || 0) * 60 + (M || 0); };
+const horaTexto = m => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+
+function useColaViva() {
+  const [cola, setCola] = React.useState([]);
+  const refrescar = React.useCallback(async () => {
+    try {
+      const r = await fetch(SB_URL_911 + "/rest/v1/rpc/cola_publica", {
+        method: "POST", headers: { apikey: SB_KEY_911, "Content-Type": "application/json" },
+        body: JSON.stringify({ dia: hoyLocalISO() })
+      });
+      if (r.ok) setCola(await r.json());
+    } catch (e) { /* sin red: se queda la última lectura */ }
+  }, []);
+  React.useEffect(() => {
+    refrescar();
+    /* Cada 45 s y al volver la pestaña al frente: suficiente para que dos
+       personas mirando a la vez vean lo mismo sin castigar la base — y el
+       choque real lo resuelve el servidor al reservar, no esta lectura. */
+    const iv = setInterval(refrescar, 45000);
+    const desp = () => { if (!document.hidden) refrescar(); };
+    document.addEventListener("visibilitychange", desp);
+    return () => { clearInterval(iv); document.removeEventListener("visibilitychange", desp); };
+  }, [refrescar]);
+  return [cola, refrescar];
+}
+
+/* Franjas reales: hoy arranca en la hora actual (nunca ofrece las 12:00 a las
+   2:50pm), tacha las que pisan turnos activos del barbero y antepone "Ahora"
+   cuando el salón está abierto y no hay nadie esperando ni agendado que
+   choque con el bloque que empezaría ya mismo. */
+function construirJornadas(fechaKey, barbero, cola, durTotal) {
   const H = window.DATA_911.horario || { apertura: 12, fin: 21, etiqueta: "12:00 p.m — 9:00 p.m" };
-  const gen = (desde, hasta, nombre, rango) => {
-    const slots = [];
-    for (let m = desde * 60; m < hasta * 60; m += 45) {
-      const hora = String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
-      slots.push({ hora, tomado: hash(fechaKey + barbero + hora) % 10 < 3 });
-    }
-    return { nombre, rango, slots };
-  };
-  return [gen(H.apertura, H.fin, "Jornada única", H.etiqueta)];
+  const esHoy = fechaKey === new Date().toDateString();
+  const ahora = new Date();
+  const ahoraMin = ahora.getHours() * 60 + ahora.getMinutes();
+  const dur = Math.max(15, durTotal || 45);
+  const ocupados = (cola || []).filter(t => t.barbero_nombre === barbero)
+    .map(t => { const i = aMin911(t.hora); return [i, i + (t.dur_min || 45)]; });
+  const pisa = m => ocupados.some(([i, f]) => m < f && m + dur > i);
+  const slots = [];
+  if (esHoy && barbero && ahoraMin >= H.apertura * 60 && ahoraMin + dur <= H.fin * 60 && !pisa(ahoraMin)) {
+    slots.push({ hora: "Ahora", tomado: false });
+  }
+  for (let m = H.apertura * 60; m + dur <= H.fin * 60; m += 45) {
+    if (esHoy && m < ahoraMin) continue; // lo pasado no se ofrece
+    slots.push({ hora: horaTexto(m), tomado: pisa(m) });
+  }
+  return [{ nombre: esHoy ? "Hoy · cola en vivo" : "Jornada", rango: H.etiqueta, slots }];
 }
 
 function ChipServicio({ s, selected, onClick }) {
@@ -3855,6 +3900,7 @@ function TurnosAsistente({ servicioInicial }) {
   const D = window.DATA_911;
   const movil = useMovil();
   const dias = React.useMemo(() => proximosDias(5), []);
+  const [colaViva, refrescarCola] = useColaViva();
   const grupos = [
     { titulo: "Cortes / motilados", icon: "scissors", cat: "cortes", items: D.cortes },
     { titulo: "Spa y masajes", icon: "hand-heart", cat: "spa", items: D.spa },
@@ -3909,28 +3955,76 @@ function TurnosAsistente({ servicioInicial }) {
     if (!seleccion.length) return true;
     return (haySpa && esMasajista) || (haySilla && !esMasajista);
   });
-  const jornadas = React.useMemo(() => construirJornadas(dia, barbero || "", haySpa && !haySilla), [dia, barbero, haySpa, haySilla]);
+  const jornadas = React.useMemo(() => construirJornadas(dia, barbero || "", colaViva, totalMin), [dia, barbero, colaViva, totalMin]);
+
+  /* Estado real de cada persona del equipo, derivado de la cola viva: en
+     silla = atendiendo; su "próximo" es la primera franja libre real. */
+  const estadoVivo = React.useCallback(p => {
+    const suyos = colaViva.filter(t => t.barbero_nombre === p.nombre);
+    const atendiendo = suyos.some(t => t.estado === "silla" || t.estado === "pausado");
+    const js = construirJornadas(dias[0].key, p.nombre, colaViva, totalMin || 45);
+    const libre = js[0].slots.find(s => !s.tomado);
+    return { estado: atendiendo ? "turno" : "libre", proximo: libre ? libre.hora : "mañana" };
+  }, [colaViva, dias, totalMin]);
 
   function asignarAutomatico() {
     const sel = seleccion.length ? seleccion : (reservables.length ? [reservables[0]] : []);
     if (!sel.length) return;
     const conSpa = sel.some(s => s.spa), conSilla = sel.some(s => !s.spa);
-    const libres = D.equipo.filter(p => {
+    const durSel = sel.reduce((a, s) => a + durNum(s.dur), 0) || 45;
+    const aptos = D.equipo.filter(p => {
       const esMasajista = p.rol.toLowerCase().includes("masajista");
-      return ((conSpa && esMasajista) || (conSilla && !esMasajista)) && p.estado !== "ocupado";
+      return (conSpa && esMasajista) || (conSilla && !esMasajista);
     });
-    const cand = libres[0] || D.equipo[0];
-    const js = construirJornadas(dias[0].key, cand.nombre, conSpa && !conSilla);
-    let primera = null;
-    for (const j of js) { const libre = j.slots.find(x => !x.tomado); if (libre) { primera = libre.hora; break; } }
-    setSeleccion(sel); setBarbero(cand.nombre); setDia(dias[0].key); setHora(primera); setAuto(true); setPaso(3);
+    /* El hueco más cercano REAL: por cada persona apta se miran sus franjas
+       de hoy contra la cola viva y gana quien atienda antes ("Ahora" primero). */
+    let mejor = null;
+    for (const p of aptos) {
+      const js = construirJornadas(dias[0].key, p.nombre, colaViva, durSel);
+      const libre = js[0].slots.find(x => !x.tomado);
+      if (!libre) continue;
+      const rango = libre.hora === "Ahora" ? -1 : aMin911(libre.hora);
+      if (!mejor || rango < mejor.rango) mejor = { p, hora: libre.hora, rango };
+    }
+    if (!mejor) { mejor = { p: aptos[0] || D.equipo[0], hora: null }; }
+    setSeleccion(sel); setBarbero(mejor.p.nombre); setDia(dias[0].key); setHora(mejor.hora); setAuto(true); setPaso(3);
   }
 
-  function confirmar() {
-    const codigo = "A-" + String(10 + Math.floor(Math.random() * 80));
+  const [reservando, setReservando] = React.useState(false);
+  const [errorReserva, setErrorReserva] = React.useState(null);
+  /* La reserva es REAL: reservar_turno inserta en la cola con candado por
+     barbero+día y rechazo de solapes en el servidor. Si dos personas piden a
+     la vez el mismo hueco, una gana y la otra ve el aviso y las franjas ya
+     actualizadas. */
+  async function confirmar() {
+    if (reservando) return;
+    setReservando(true); setErrorReserva(null);
     const d = dias.find(x => x.key === dia);
-    setTurno({ codigo, servicio: nombresSel, barbero, fecha: d.largo, hora, posicion: 3 });
-    setPaso(4);
+    const ahora = new Date();
+    const horaReal = hora === "Ahora"
+      ? horaTexto(ahora.getHours() * 60 + ahora.getMinutes())
+      : hora;
+    try {
+      const r = await fetch(SB_URL_911 + "/rest/v1/rpc/reservar_turno", {
+        method: "POST", headers: { apikey: SB_KEY_911, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          p_cliente: nombre.trim(), p_telefono: tel.replace(/\D/g, ""), p_servicios: nombresSel,
+          p_barbero: barbero, p_fecha: new Date(dia).toLocaleDateString("en-CA"),
+          p_hora: horaReal, p_dur: totalMin || 45, p_precio: totalPrecio
+        })
+      });
+      const cuerpo = await r.json();
+      if (!r.ok) throw new Error((cuerpo && cuerpo.message) || "No se pudo reservar. Intenta de nuevo.");
+      const res = Array.isArray(cuerpo) ? cuerpo[0] : cuerpo;
+      setTurno({ codigo: res.codigo, servicio: nombresSel, barbero, fecha: d.largo, hora: hora === "Ahora" ? "Ahora (" + horaReal + ")" : hora, posicion: res.posicion });
+      setPaso(4);
+    } catch (e) {
+      setErrorReserva(e.message);
+      if (/ocuparse/.test(e.message)) { setHora(null); setPaso(2); } // franjas frescas para re-elegir
+    } finally {
+      setReservando(false);
+      refrescarCola();
+    }
   }
 
   const pasos = ["Servicio", "Barbero", "Hora", "Datos"];
@@ -3980,10 +4074,13 @@ function TurnosAsistente({ servicioInicial }) {
             {paso === 1 && (
               <div style={{ display: "grid", gap: "var(--sp-3)" }}>
                 <span style={{ font: "600 var(--fs-2xs)/1.4 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wider)", color: "var(--text-muted)" }}>{haySpa && haySilla ? "¿Quién te recibe? El equipo se coordina para el resto de servicios" : "¿Con quién?"}</span>
-                {equipo.map(p => (
-                  <BarberCard key={p.nombre} name={p.nombre} role={p.rol} estado={p.estado} nextSlot={p.proximo} specialty={p.especialidad}
-                    selected={barbero === p.nombre} onClick={() => { if (p.estado !== "ocupado") { setBarbero(p.nombre); setHora(null); } }} />
-                ))}
+                {equipo.map(p => {
+                  const vivo = estadoVivo(p);
+                  return (
+                    <BarberCard key={p.nombre} name={p.nombre} role={p.rol} estado={vivo.estado} nextSlot={vivo.proximo} specialty={p.especialidad}
+                      selected={barbero === p.nombre} onClick={() => { setBarbero(p.nombre); setHora(null); }} />
+                  );
+                })}
               </div>
             )}
 
@@ -3996,6 +4093,7 @@ function TurnosAsistente({ servicioInicial }) {
                   </div>
                 </div>
                 <SlotPicker jornadas={jornadas} value={hora} onChange={setHora} />
+                {!jornadas[0].slots.length && <span style={{ font: "var(--fw-regular) var(--fs-sm)/1.5 var(--font-body)", color: "var(--text-muted)" }}>Por hoy ya no quedan horas — elige otro día.</span>}
                 {totalMin > 45 && <span style={{ font: "var(--fw-regular) var(--fs-2xs)/1.5 var(--font-body)", color: "var(--text-faint)" }}>Tus servicios suman {fmtDur(totalMin)}: la hora elegida es la de inicio.</span>}
               </div>
             )}
@@ -4040,17 +4138,34 @@ function TurnosAsistente({ servicioInicial }) {
             )}
 
             {paso < 4 && (
-              <div style={{ display: "flex", gap: "var(--sp-3)", marginTop: "auto", paddingTop: "var(--sp-2)" }}>
-                {paso > 0 && <Button variant="outline" onClick={() => setPaso(p => p - 1)}>Atrás</Button>}
-                {paso < 3
-                  ? <Button disabled={!puedeSeguir} onClick={() => setPaso(p => p + 1)} iconRight={<Icon name="arrow-right" size={16} />}>Continuar</Button>
-                  : <Button disabled={!puedeSeguir} onClick={confirmar} iconRight={<Icon name="check" size={16} />}>Confirmar turno</Button>}
+              <div style={{ display: "grid", gap: "var(--sp-3)", marginTop: "auto", paddingTop: "var(--sp-2)" }}>
+                {errorReserva && <Badge tone="ocupado" dot>{errorReserva}</Badge>}
+                <div style={{ display: "flex", gap: "var(--sp-3)" }}>
+                  {paso > 0 && <Button variant="outline" onClick={() => { setErrorReserva(null); setPaso(p => p - 1); }}>Atrás</Button>}
+                  {paso < 3
+                    ? <Button disabled={!puedeSeguir} onClick={() => setPaso(p => p + 1)} iconRight={<Icon name="arrow-right" size={16} />}>Continuar</Button>
+                    : <Button disabled={!puedeSeguir || reservando} onClick={confirmar} iconRight={<Icon name="check" size={16} />}>{reservando ? "Reservando…" : "Confirmar turno"}</Button>}
+                </div>
               </div>
             )}
           </Card>
 
           <div style={{ display: "grid", gap: "var(--sp-4)" }}>
-            <QueueStatus enAtencion="A-014" esperaMin={25} enEspera={[{ codigo: "A-015", servicio: "Skin fade" }, { codigo: "A-016", servicio: "Barba" }, { codigo: "A-017", servicio: "Masaje facial" }]} />
+            {(() => {
+              /* La tarjeta lateral pinta la cola REAL del día (cola_publica):
+                 quién está en silla, quiénes esperan y una estimación honesta
+                 (lo que le falta al de la silla + las duraciones de la fila). */
+              const enSilla = colaViva.find(t => t.estado === "silla" || t.estado === "pausado");
+              const esperas = colaViva.filter(t => t.estado === "espera");
+              let est = 0;
+              if (enSilla) {
+                const trans = enSilla.iniciado_en ? Math.max(0, Math.floor((Date.now() - new Date(enSilla.iniciado_en).getTime()) / 60000)) : 0;
+                est += Math.max(5, (enSilla.dur_min || 45) - trans);
+              }
+              est += esperas.reduce((a, t) => a + (t.dur_min || 45), 0);
+              return <QueueStatus enAtencion={enSilla ? enSilla.codigo : "Sin turno en silla"} esperaMin={est}
+                enEspera={esperas.slice(0, 4).map(t => ({ codigo: t.codigo, servicio: t.servicios }))} />;
+            })()}
             {(() => {
               const items = [["zap", "El sistema busca el primer hueco libre del barbero que elijas."], ["layers", "¿Varios servicios? Se agendan seguidos en el mismo turno; solo un corte por visita."], ["ticket", "Te asigna un código de turno y te lo manda por WhatsApp."], ["clock", "Llega 5 minutos antes: el turno se libera a los 10."]];
               const filas = items.map(([ic, t]) => (
