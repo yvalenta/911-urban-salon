@@ -1022,7 +1022,7 @@ function VistaAjustes({ C }) {
             <div key={cat} className="card" style={{ display: "grid", gap: 10, gridColumn: "1 / -1" }}>
               <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                 <h3 style={{ font: "700 15px var(--cond)", textTransform: "uppercase", letterSpacing: ".05em", flex: 1 }}>Carta · {titulo}</h3>
-                <button className="btn ghost sm" onClick={() => setForm({ categoria: cat, nombre: "", precio: "", dur_min: "", descripcion: "", badge: "" })}><Ic d={I.mas} s={13} />Nuevo</button>
+                <button className="btn ghost sm" onClick={() => setForm({ categoria: cat, nombre: "", precio: "", dur_min: "", descripcion: "", badge: "", duraciones: {} })}><Ic d={I.mas} s={13} />Nuevo</button>
               </div>
               <div className="tabla-wrap">
                 <table className="tabla" style={{ minWidth: 640 }}>
@@ -1035,7 +1035,7 @@ function VistaAjustes({ C }) {
                           {cat === "cortes" && <td>{s.img ? <img src={miniImg(s.img)} alt="" style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 8, border: "1px solid var(--bd)" }} /> : <span className="tenue">—</span>}</td>}
                           <td style={{ color: "var(--tx)", fontWeight: 600 }}>{s.nombre}{s.descripcion && <div className="tenue" style={{ fontWeight: 400, fontSize: 12 }}>{s.descripcion}</div>}</td>
                           <td style={{ color: "var(--brand)", fontWeight: 700 }}>{fmtCOP(s.precio)}</td>
-                          <td>{s.dur_min} min</td>
+                          <td>{s.dur_min} min{s.duraciones && Object.keys(s.duraciones).length ? <span className="tenue" title={Object.entries(s.duraciones).map(([q, v]) => q + ": " + v + " min").join(" · ")}> · varía</span> : null}</td>
                           <td><button title="Cambiar visibilidad" onClick={() => C.guardarServicio(s.id, { estado: sigEstado(s.estado) }, ESTADOS[sigEstado(s.estado)][0] + ": " + s.nombre)}><span className={"badge " + tono}>{etq}</span></button></td>
                           <td>
                             <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
@@ -1045,7 +1045,7 @@ function VistaAjustes({ C }) {
                                   <input type="file" accept="image/jpeg,image/png,image/webp" style={{ display: "none" }} onChange={e => { C.subirFoto(s, e.target.files[0]); e.target.value = ""; }} />
                                 </label>
                               )}
-                              <button className="btn ghost sm" onClick={() => setForm({ id: s.id, categoria: cat, nombre: s.nombre, precio: String(s.precio), dur_min: String(s.dur_min), descripcion: s.descripcion || "", badge: s.badge || "" })}><Ic d={I.lapiz} s={13} />Editar</button>
+                              <button className="btn ghost sm" onClick={() => setForm({ id: s.id, categoria: cat, nombre: s.nombre, precio: String(s.precio), dur_min: String(s.dur_min), descripcion: s.descripcion || "", badge: s.badge || "", duraciones: s.duraciones || {} })}><Ic d={I.lapiz} s={13} />Editar</button>
                               <button className="icon-btn" onClick={() => setBorrar(s)} aria-label={"Eliminar " + s.nombre}><Ic d={I.basura} s={14} /></button>
                             </div>
                           </td>
@@ -1072,12 +1072,36 @@ function VistaAjustes({ C }) {
             </div>
             <label className="fld"><span>Descripción (opcional)</span><input className="input" value={form.descripcion} onChange={e => setForm({ ...form, descripcion: e.target.value })} /></label>
             {form.categoria === "cortes" && <label className="fld"><span>Etiqueta (opcional)</span><input className="input" value={form.badge} onChange={e => setForm({ ...form, badge: e.target.value })} placeholder="Más pedido" /></label>}
+            {/* Cada persona puede tardar distinto: minutos por integrante del
+                equipo; vacío usa la duración base. La landing y la reserva web
+                usan el tiempo de quien atiende. */}
+            <div style={{ display: "grid", gap: 8 }}>
+              <span className="tenue" style={{ fontSize: 12 }}>Tiempo por persona (opcional — vacío usa la base)</span>
+              <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))" }}>
+                {((C.negocio && C.negocio.equipo) || []).filter(m => {
+                  const masajista = (m.rol || "").toLowerCase().includes("masajista");
+                  return form.categoria === "spa" ? masajista : !masajista;
+                }).map(m => (
+                  <label key={m.nombre} className="fld"><span>{m.nombre}</span>
+                    <input className="input" type="number" min="5" step="5" placeholder={form.dur_min || "base"}
+                      value={form.duraciones[m.nombre] == null ? "" : form.duraciones[m.nombre]}
+                      onChange={e => setForm({ ...form, duraciones: { ...form.duraciones, [m.nombre]: e.target.value } })} />
+                  </label>
+                ))}
+              </div>
+            </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <button className="btn ghost" onClick={() => setForm(null)}>Cancelar</button>
               <button className="btn primary" disabled={form.nombre.trim().length < 2 || !(parseInt(form.precio, 10) >= 0) || !(parseInt(form.dur_min, 10) > 0)} onClick={() => {
+                const duraciones = {};
+                Object.entries(form.duraciones || {}).forEach(([quien, v]) => {
+                  const n = parseInt(v, 10);
+                  if (n > 0) duraciones[quien] = n;
+                });
                 C.guardarServicio(form.id || null, {
                   categoria: form.categoria, nombre: form.nombre.trim(), precio: parseInt(form.precio, 10) || 0,
-                  dur_min: parseInt(form.dur_min, 10) || 45, descripcion: form.descripcion.trim() || null, badge: form.badge.trim() || null
+                  dur_min: parseInt(form.dur_min, 10) || 45, descripcion: form.descripcion.trim() || null, badge: form.badge.trim() || null,
+                  duraciones: Object.keys(duraciones).length ? duraciones : null
                 }, form.id ? "Publicado: " + form.nombre : "En la carta: " + form.nombre);
                 setForm(null);
               }}><Ic d={I.check} s={14} />Guardar y publicar</button>

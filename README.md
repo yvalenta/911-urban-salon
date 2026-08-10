@@ -108,7 +108,13 @@ no quede viejo. Campos:
 ### Reglas del asistente de turnos
 
 - Se pueden combinar varios servicios en un turno; **solo un corte** (elegir un
-  segundo corte reemplaza al primero). Muestra total y duración sumada.
+  segundo corte reemplaza al primero) y **máximo 3 horas por reserva web** (el
+  asistente avisa al armar el combo y el servidor lo exige de todos modos).
+- **La duración depende de quién atiende**: cada servicio tiene su base y,
+  opcionalmente, minutos por persona (Ajustes → Editar servicio → "Tiempo por
+  persona"). Las franjas, el total y la reserva usan el tiempo del barbero
+  elegido — y el servidor recalcula la duración por su cuenta, sin confiar en
+  la que manda el navegador.
 - **La disponibilidad es real (fase 3)**: franjas cada 45 min entre
   `horario.apertura` y `horario.fin` (martes cerrado), hoy arranca en la hora
   actual, se tachan las que pisan turnos activos del barbero (`cola_publica`,

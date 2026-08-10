@@ -3721,6 +3721,7 @@ window.DATA_911 = {
   const sync = (window.__CONTENIDO_911 = { listo: false });
   const mapa = r => ({
     nombre: r.nombre, precio: fmtCOP(r.precio), dur: (r.dur_min || 45) + " min",
+    durs: r.duraciones || undefined, // minutos por persona: {"Samuel": 40}
     desc: r.descripcion || "", img: r.img || undefined, icon: r.icon || undefined,
     badge: r.badge || undefined, estado: r.estado
   });
@@ -3907,7 +3908,7 @@ function TurnosAsistente({ servicioInicial }) {
     { titulo: "Barbería y otros", icon: "spray-can", cat: "barberia", items: D.barberia || [] }
   ].map(g => ({
     ...g,
-    items: g.items.filter(s => s.estado !== "borrador").map(s => ({ nombre: s.nombre, dur: s.dur, precio: s.precio, estado: s.estado, cat: g.cat, spa: g.cat === "spa" }))
+    items: g.items.filter(s => s.estado !== "borrador").map(s => ({ nombre: s.nombre, dur: s.dur, durs: s.durs, precio: s.precio, estado: s.estado, cat: g.cat, spa: g.cat === "spa" }))
   })).filter(g => g.items.length);
   const reservables = grupos.flatMap(g => g.items).filter(s => s.estado !== "agotado");
 
@@ -3924,18 +3925,29 @@ function TurnosAsistente({ servicioInicial }) {
 
   const precioNum = p => parseInt(String(p || "").replace(/[^0-9]/g, ""), 10) || 0;
   const durNum = d => parseInt(String(d || "").replace(/[^0-9]/g, ""), 10) || 0;
+  /* La duración depende de QUIÉN atiende: durs es el mapa persona→minutos
+     que se edita en /admin; sin entrada para esa persona, aplica la base. */
+  const durDe = (s, persona) => (s.durs && persona && parseInt(s.durs[persona], 10)) || durNum(s.dur);
+  const totalMinCon = persona => seleccion.reduce((a, s) => a + durDe(s, persona), 0);
   const totalPrecio = seleccion.reduce((a, s) => a + precioNum(s.precio), 0);
   const totalMin = seleccion.reduce((a, s) => a + durNum(s.dur), 0);
+  const totalVigente = barbero ? totalMinCon(barbero) : totalMin;
+  const TOPE_WEB_MIN = 180; // reservas web: máximo 3 horas por combo (el servidor también lo exige)
   const fmtPrecio = n => "$" + n.toLocaleString("es-CO");
   const fmtDur = m => m >= 60 ? Math.floor(m / 60) + " h" + (m % 60 ? " " + (m % 60) + " min" : "") : m + " min";
   const nombresSel = seleccion.map(s => s.nombre).join(" + ");
 
+  const [avisoTope, setAvisoTope] = React.useState(false);
   function alternar(s) {
     setSeleccion(sel => {
       const ya = sel.some(x => x.nombre === s.nombre);
-      if (ya) return sel.filter(x => x.nombre !== s.nombre);
-      if (s.cat === "cortes") return [...sel.filter(x => x.cat !== "cortes"), s];
-      return [...sel, s];
+      if (ya) { setAvisoTope(false); return sel.filter(x => x.nombre !== s.nombre); }
+      const nuevo = s.cat === "cortes" ? [...sel.filter(x => x.cat !== "cortes"), s] : [...sel, s];
+      /* Tope web: el combo no puede pasar de 3 horas (con la duración base;
+         el servidor re-verifica con la duración real del barbero elegido). */
+      if (nuevo.reduce((a, x) => a + durNum(x.dur), 0) > TOPE_WEB_MIN) { setAvisoTope(true); return sel; }
+      setAvisoTope(false);
+      return nuevo;
     });
     setBarbero(null); setHora(null);
   }
@@ -3955,31 +3967,33 @@ function TurnosAsistente({ servicioInicial }) {
     if (!seleccion.length) return true;
     return (haySpa && esMasajista) || (haySilla && !esMasajista);
   });
-  const jornadas = React.useMemo(() => construirJornadas(dia, barbero || "", colaViva, totalMin), [dia, barbero, colaViva, totalMin]);
+  const jornadas = React.useMemo(() => construirJornadas(dia, barbero || "", colaViva, totalVigente), [dia, barbero, colaViva, totalVigente]);
 
   /* Estado real de cada persona del equipo, derivado de la cola viva: en
-     silla = atendiendo; su "próximo" es la primera franja libre real. */
+     silla = atendiendo; su "próximo" es la primera franja libre real, medida
+     con LO QUE ESA PERSONA tarda en los servicios elegidos. */
   const estadoVivo = React.useCallback(p => {
     const suyos = colaViva.filter(t => t.barbero_nombre === p.nombre);
     const atendiendo = suyos.some(t => t.estado === "silla" || t.estado === "pausado");
-    const js = construirJornadas(dias[0].key, p.nombre, colaViva, totalMin || 45);
+    const js = construirJornadas(dias[0].key, p.nombre, colaViva, totalMinCon(p.nombre) || 45);
     const libre = js[0].slots.find(s => !s.tomado);
     return { estado: atendiendo ? "turno" : "libre", proximo: libre ? libre.hora : "mañana" };
-  }, [colaViva, dias, totalMin]);
+  }, [colaViva, dias, seleccion]);
 
   function asignarAutomatico() {
     const sel = seleccion.length ? seleccion : (reservables.length ? [reservables[0]] : []);
     if (!sel.length) return;
     const conSpa = sel.some(s => s.spa), conSilla = sel.some(s => !s.spa);
-    const durSel = sel.reduce((a, s) => a + durNum(s.dur), 0) || 45;
     const aptos = D.equipo.filter(p => {
       const esMasajista = p.rol.toLowerCase().includes("masajista");
       return (conSpa && esMasajista) || (conSilla && !esMasajista);
     });
     /* El hueco más cercano REAL: por cada persona apta se miran sus franjas
-       de hoy contra la cola viva y gana quien atienda antes ("Ahora" primero). */
+       de hoy contra la cola viva — con la duración de ESA persona — y gana
+       quien atienda antes ("Ahora" primero). */
     let mejor = null;
     for (const p of aptos) {
+      const durSel = sel.reduce((a, s) => a + durDe(s, p.nombre), 0) || 45;
       const js = construirJornadas(dias[0].key, p.nombre, colaViva, durSel);
       const libre = js[0].slots.find(x => !x.tomado);
       if (!libre) continue;
@@ -4010,7 +4024,7 @@ function TurnosAsistente({ servicioInicial }) {
         body: JSON.stringify({
           p_cliente: nombre.trim(), p_telefono: tel.replace(/\D/g, ""), p_servicios: nombresSel,
           p_barbero: barbero, p_fecha: new Date(dia).toLocaleDateString("en-CA"),
-          p_hora: horaReal, p_dur: totalMin || 45, p_precio: totalPrecio
+          p_hora: horaReal, p_dur: totalVigente || 45, p_precio: totalPrecio
         })
       });
       const cuerpo = await r.json();
@@ -4068,6 +4082,7 @@ function TurnosAsistente({ servicioInicial }) {
                     <span style={{ font: "600 var(--fs-2xs)/1 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wider)", color: "var(--text-faint)" }}>{fmtDur(totalMin)}</span>
                   </div>
                 )}
+                {avisoTope && <Badge tone="ocupado" dot>Máximo 3 horas por reserva web — para un combo mayor escríbenos por WhatsApp</Badge>}
               </div>
             )}
 
@@ -4094,7 +4109,7 @@ function TurnosAsistente({ servicioInicial }) {
                 </div>
                 <SlotPicker jornadas={jornadas} value={hora} onChange={setHora} />
                 {!jornadas[0].slots.length && <span style={{ font: "var(--fw-regular) var(--fs-sm)/1.5 var(--font-body)", color: "var(--text-muted)" }}>Por hoy ya no quedan horas — elige otro día.</span>}
-                {totalMin > 45 && <span style={{ font: "var(--fw-regular) var(--fs-2xs)/1.5 var(--font-body)", color: "var(--text-faint)" }}>Tus servicios suman {fmtDur(totalMin)}: la hora elegida es la de inicio.</span>}
+                {totalVigente > 45 && <span style={{ font: "var(--fw-regular) var(--fs-2xs)/1.5 var(--font-body)", color: "var(--text-faint)" }}>Con {barbero} tus servicios suman {fmtDur(totalVigente)}: la hora elegida es la de inicio.</span>}
               </div>
             )}
 
@@ -4106,7 +4121,7 @@ function TurnosAsistente({ servicioInicial }) {
                 </div>
                 {auto && <Badge tone="azul" dot>Turno asignado automáticamente: el hueco más cercano</Badge>}
                 <div style={{ display: "grid", gap: "var(--sp-2)", background: "var(--surface-raised)", border: "1px solid var(--border-hair)", borderRadius: "var(--radius-sm)", padding: "var(--sp-4)" }}>
-                  {[["Servicios", nombresSel], ["Total", fmtPrecio(totalPrecio) + " · " + fmtDur(totalMin)], ["Barbero", barbero], ["Día", (dias.find(d => d.key === dia) || {}).largo], ["Hora", hora]].map(([k, v]) => (
+                  {[["Servicios", nombresSel], ["Total", fmtPrecio(totalPrecio) + " · " + fmtDur(totalVigente)], ["Barbero", barbero], ["Día", (dias.find(d => d.key === dia) || {}).largo], ["Hora", hora]].map(([k, v]) => (
                     <div key={k} style={{ display: "flex", justifyContent: "space-between", gap: "var(--sp-4)" }}>
                       <span style={{ font: "600 var(--fs-2xs)/1.5 var(--font-condensed)", textTransform: "uppercase", letterSpacing: "var(--ls-wider)", color: "var(--text-faint)", flex: "0 0 auto" }}>{k}</span>
                       <span style={{ font: "700 var(--fs-sm)/1.5 var(--font-condensed)", textTransform: "uppercase", color: "var(--text-strong)", textAlign: "right" }}>{v || "—"}</span>
@@ -4126,7 +4141,7 @@ function TurnosAsistente({ servicioInicial }) {
                       "Hola, soy " + nombre + ". Pedí un turno en la página:\n" +
                       "Código: " + turno.codigo + "\n" +
                       "Servicios: " + turno.servicio + "\n" +
-                      "Total: " + fmtPrecio(totalPrecio) + " · " + fmtDur(totalMin) + "\n" +
+                      "Total: " + fmtPrecio(totalPrecio) + " · " + fmtDur(totalVigente) + "\n" +
                       "Con: " + turno.barbero + "\n" +
                       "Día: " + turno.fecha + "\n" +
                       "Hora: " + turno.hora + "\n" +

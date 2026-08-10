@@ -13,6 +13,7 @@ producción no es la única copia del esquema.
 | `10_unique_codigo_turno.sql` | `unique (fecha, codigo)` en `turnos` — mata la carrera de códigos A-0XX | 2026-08-07 |
 | `11_rpc_cola.sql` | RPCs atómicos `intercambiar_turnos` y `correr_citas` (ver `11_rpc_cola.parche.md`) | 2026-08-07 |
 | `12_reservas_landing.sql` | Fase 3: `cola_publica` (cola saneada para anon) y `reservar_turno` (reserva con candado y anti-solape) | 2026-08-10 |
+| `13_duraciones_por_persona_y_tope.sql` | `servicios.duraciones` (minutos por persona) + `reservar_turno` recalcula la duración en servidor y exige tope de 3 h | 2026-08-10 |
 
 ## Cómo aplicar
 
