@@ -4152,17 +4152,27 @@ function TurnosAsistente({ servicioInicial }) {
 
           <div style={{ display: "grid", gap: "var(--sp-4)" }}>
             {(() => {
-              /* La tarjeta lateral pinta la cola REAL del día (cola_publica):
-                 quién está en silla, quiénes esperan y una estimación honesta
-                 (lo que le falta al de la silla + las duraciones de la fila). */
+              /* La tarjeta lateral pinta la cola REAL del día (cola_publica).
+                 La espera estimada es la del que llega YA: minutos hasta el
+                 primer hueco libre de CUALQUIERA del equipo. No se suman las
+                 duraciones de la fila — los barberos atienden en paralelo y un
+                 turno agendado para las 6pm no es gente esperando ahora (esa
+                 suma llegó a decir "345 min" con dos turnos agendados). */
               const enSilla = colaViva.find(t => t.estado === "silla" || t.estado === "pausado");
               const esperas = colaViva.filter(t => t.estado === "espera");
-              let est = 0;
-              if (enSilla) {
-                const trans = enSilla.iniciado_en ? Math.max(0, Math.floor((Date.now() - new Date(enSilla.iniciado_en).getTime()) / 60000)) : 0;
-                est += Math.max(5, (enSilla.dur_min || 45) - trans);
+              const H = D.horario || { apertura: 12, fin: 21 };
+              const ahoraMin = new Date().getHours() * 60 + new Date().getMinutes();
+              const abierto = ahoraMin >= H.apertura * 60 && ahoraMin < H.fin * 60;
+              let est = null;
+              if (abierto) {
+                for (const p of D.equipo) {
+                  const js = construirJornadas(dias[0].key, p.nombre, colaViva, 45);
+                  const libre = js[0].slots.find(s => !s.tomado);
+                  if (!libre) continue;
+                  const m = libre.hora === "Ahora" ? 0 : Math.max(0, aMin911(libre.hora) - ahoraMin);
+                  if (est === null || m < est) est = m;
+                }
               }
-              est += esperas.reduce((a, t) => a + (t.dur_min || 45), 0);
               return <QueueStatus enAtencion={enSilla ? enSilla.codigo : "Sin turno en silla"} esperaMin={est}
                 enEspera={esperas.slice(0, 4).map(t => ({ codigo: t.codigo, servicio: t.servicios }))} />;
             })()}
