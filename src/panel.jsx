@@ -267,7 +267,24 @@ function useContenido(avisar) {
     const { data } = sb.storage.from("publico").getPublicUrl(ruta);
     await guardarServicio(srv.id, { img: data.publicUrl + "?v=" + Date.now() }, "Foto publicada: " + srv.nombre);
   };
-  return { negocio, servicios, guardarNegocio, guardarServicio, eliminarServicio, subirFoto };
+  /* Imágenes de marca (banner, logo del pie): suben a Storage y su URL queda
+     en negocio.imagenes — la landing la usa apenas se recarga. */
+  const subirImagenMarca = async (clave, file) => {
+    if (!file) return;
+    if (file.size > 2.5 * 1024 * 1024) { avisar("La imagen debe pesar menos de 2.5 MB", true); return; }
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const ruta = "marca/" + clave + "." + ext;
+    const { error } = await sb.storage.from("publico").upload(ruta, file, { upsert: true, cacheControl: "3600", contentType: file.type || "image/jpeg" });
+    if (error) { avisar(error.message, true); return; }
+    const { data } = sb.storage.from("publico").getPublicUrl(ruta);
+    await guardarNegocio({ imagenes: { ...(negocio.imagenes || {}), [clave]: data.publicUrl + "?v=" + Date.now() } }, "Imagen publicada");
+  };
+  const quitarImagenMarca = async clave => {
+    const imgs = { ...(negocio.imagenes || {}) };
+    delete imgs[clave];
+    await guardarNegocio({ imagenes: imgs }, "Vuelve la imagen original");
+  };
+  return { negocio, servicios, guardarNegocio, guardarServicio, eliminarServicio, subirFoto, subirImagenMarca, quitarImagenMarca };
 }
 
 /* ── Piezas ── */
@@ -889,6 +906,30 @@ function VistaAjustes({ C }) {
           <button className="btn primary" style={{ justifySelf: "end" }} disabled={!(horario.apertura >= 0) || !(horario.fin > horario.apertura)}
             onClick={() => C.guardarNegocio({ horario }, "Horario publicado")}>
             <Ic d={I.check} s={14} />Guardar y publicar</button>
+        </div>
+
+        <div className="card" style={{ display: "grid", gap: 10, gridColumn: "1 / -1" }}>
+          <h3 style={{ font: "700 15px var(--cond)", textTransform: "uppercase", letterSpacing: ".05em" }}>Imágenes de marca</h3>
+          <span className="tenue">El banner a lo ancho y el logo del pie de página. Subir reemplaza; "Original" vuelve al arte del sitio. Las fotos de los cortes se cambian abajo, en la carta.</span>
+          <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
+            {[["banner", "Banner de marca", "/assets/banner.jpeg", { width: "100%", height: 74, objectFit: "cover" }],
+              ["logo", "Logo del pie", "/assets/logo-911-urban-salon-dark.png", { height: 74, objectFit: "contain" }]].map(([clave, titulo, porDefecto, estilo]) => {
+              const subida = (n.imagenes || {})[clave];
+              return (
+                <div key={clave} style={{ display: "grid", gap: 8 }}>
+                  <span className="eyebrow">{titulo}{subida ? " · personalizada" : " · original"}</span>
+                  <img src={subida || porDefecto} alt="" style={{ ...estilo, borderRadius: 8, border: "1px solid var(--line)", background: "var(--panel)", justifySelf: "start" }} />
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <label className="btn ghost sm" style={{ cursor: "pointer" }}>
+                      <Ic d={I.foto} s={13} />Subir nueva
+                      <input type="file" accept="image/jpeg,image/png,image/webp" style={{ display: "none" }} onChange={e => { C.subirImagenMarca(clave, e.target.files[0]); e.target.value = ""; }} />
+                    </label>
+                    {subida && <button className="btn ghost sm" onClick={() => C.quitarImagenMarca(clave)}><Ic d={I.atras} s={13} />Original</button>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         <div className="card" style={{ display: "grid", gap: 10, gridColumn: "1 / -1" }}>

@@ -582,7 +582,7 @@ function Footer() {
     <footer style={{ borderTop: "1px solid var(--border-hair)", background: "var(--negro-950)", paddingBlock: "var(--sp-12)" }}>
       <div className="u-container" style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr", gap: "var(--sp-10)" }}>
         <div style={{ display: "grid", gap: "var(--sp-4)", justifyItems: "start" }}>
-          <img src="assets/logo-911-urban-salon-dark.png" alt="911 Urban Salón" style={{ height: 110 }} />
+          <img src={(D.imagenes || {}).logo || "assets/logo-911-urban-salon-dark.png"} alt="911 Urban Salón" style={{ height: 110 }} />
           <span style={{ fontFamily: "var(--font-tag)", color: "var(--naranja-500)", transform: "rotate(-2deg)", display: "inline-block" }}>Tu belleza, nuestra emergencia</span>
         </div>
         <div style={{ display: "grid", gap: "var(--sp-3)", alignContent: "start" }}>
@@ -697,11 +697,14 @@ Object.assign(window, { TurnosAsistente, Servicios, Cortes, Spa, ComoFunciona, R
 /* ══ Montaje (antes segundo <script> de la página) ══ */
 
 
-/* Banda de marca: el banner graffiti a lo ancho, entre el hero y la carta. */
+/* Banda de marca: el banner graffiti a lo ancho, entre el hero y la carta.
+   La imagen es administrable (Ajustes → Imágenes de marca); sin subir nada,
+   va el asset del repo. */
 function BannerMarca(){
+  const im = (window.DATA_911.imagenes || {});
   return (
     <div aria-hidden="true" style={{borderBlock:"1px solid var(--border-hair)",background:"var(--negro-950)"}}>
-      <img src="assets/banner.jpeg" alt="" loading="lazy"
+      <img src={im.banner || "assets/banner.jpeg"} alt="" loading="lazy"
         style={{display:"block",width:"100%",height:"clamp(140px, 22vw, 300px)",objectFit:"cover"}}/>
     </div>
   );

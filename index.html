@@ -252,6 +252,11 @@ img{max-width:100%;display:block}
 
 /* ══ Página ══ */
 html{scroll-behavior:smooth}
+/* El hero ya no lleva la imagen del lockup: quedaba pegada al banner de marca
+   y las dos versiones del logo juntas se estorbaban. El texto ocupa una sola
+   columna cómoda y el fondo de ciudad respira. */
+section#top img{display:none}
+section#top div[style*="1.15fr"]{grid-template-columns:1fr !important;max-width:760px}
 /* Sin paneo lateral: las entradas de AOS (fade-left/right) desplazan bloques
    100px fuera del viewport y sin esto la página entera se puede arrastrar. */
 html, body{overflow-x:hidden;overflow-x:clip}
@@ -2050,6 +2055,7 @@ window.DATA_911 = {
         if (neg.direccion) D.direccion = neg.direccion;
         if (neg.horario) D.horario = Object.assign({}, D.horario, neg.horario);
         if (Array.isArray(neg.equipo) && neg.equipo.length) D.equipo = neg.equipo;
+        if (neg.imagenes) D.imagenes = neg.imagenes; // banner/logo subidos desde Ajustes
       }
       if (Array.isArray(srv) && srv.length) {
         for (const cat of ["cortes", "spa", "barberia"]) {
@@ -3370,7 +3376,7 @@ function _extends() { return _extends = Object.assign ? Object.assign.bind() : f
         justifyItems: "start"
       }
     }, /*#__PURE__*/React.createElement("img", {
-      src: "assets/logo-911-urban-salon-dark.png",
+      src: (D.imagenes || {}).logo || "assets/logo-911-urban-salon-dark.png",
       alt: "911 Urban Sal\xF3n",
       style: {
         height: 110
@@ -3726,8 +3732,11 @@ function _extends() { return _extends = Object.assign ? Object.assign.bind() : f
 
 /* ══ Montaje (antes segundo <script> de la página) ══ */
 
-/* Banda de marca: el banner graffiti a lo ancho, entre el hero y la carta. */
+/* Banda de marca: el banner graffiti a lo ancho, entre el hero y la carta.
+   La imagen es administrable (Ajustes → Imágenes de marca); sin subir nada,
+   va el asset del repo. */
 function BannerMarca() {
+  const im = window.DATA_911.imagenes || {};
   return /*#__PURE__*/React.createElement("div", {
     "aria-hidden": "true",
     style: {
@@ -3735,7 +3744,7 @@ function BannerMarca() {
       background: "var(--negro-950)"
     }
   }, /*#__PURE__*/React.createElement("img", {
-    src: "assets/banner.jpeg",
+    src: im.banner || "assets/banner.jpeg",
     alt: "",
     loading: "lazy",
     style: {

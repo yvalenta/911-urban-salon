@@ -83,9 +83,11 @@ del collage; el logo es el lockup en papel).
 **Desde la fase 2 el contenido vive en Supabase** y se edita en `/admin` →
 **Ajustes** (rol admin): contacto (nombre, WhatsApp, dirección), horario,
 equipo visible y la carta completa (precios, duraciones, descripciones,
-visibilidad, servicios nuevos y **fotos de los cortes**, que se suben a
-Supabase Storage). Guardar = publicar: la landing lee las tablas `negocio` y
-`servicios` con la anon key al cargar.
+visibilidad, servicios nuevos y **fotos de los cortes**) y las **imágenes de
+marca** (el banner a lo ancho y el logo del pie: subir reemplaza, "Original"
+vuelve al arte del repo; todo va a Supabase Storage). Guardar = publicar: la
+landing lee las tablas `negocio` y `servicios` con la anon key al cargar. La
+imagen grande del hero se retiró: el banner cumple ese papel.
 
 El objeto `window.DATA_911` de `index.html` queda como **respaldo**: es lo
 que se muestra si la base no responde (y lo que ve un visitante sin conexión

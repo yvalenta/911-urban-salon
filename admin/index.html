@@ -673,13 +673,55 @@ function useContenido(avisar) {
       img: data.publicUrl + "?v=" + Date.now()
     }, "Foto publicada: " + srv.nombre);
   };
+  /* Imágenes de marca (banner, logo del pie): suben a Storage y su URL queda
+     en negocio.imagenes — la landing la usa apenas se recarga. */
+  const subirImagenMarca = async (clave, file) => {
+    if (!file) return;
+    if (file.size > 2.5 * 1024 * 1024) {
+      avisar("La imagen debe pesar menos de 2.5 MB", true);
+      return;
+    }
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const ruta = "marca/" + clave + "." + ext;
+    const {
+      error
+    } = await sb.storage.from("publico").upload(ruta, file, {
+      upsert: true,
+      cacheControl: "3600",
+      contentType: file.type || "image/jpeg"
+    });
+    if (error) {
+      avisar(error.message, true);
+      return;
+    }
+    const {
+      data
+    } = sb.storage.from("publico").getPublicUrl(ruta);
+    await guardarNegocio({
+      imagenes: {
+        ...(negocio.imagenes || {}),
+        [clave]: data.publicUrl + "?v=" + Date.now()
+      }
+    }, "Imagen publicada");
+  };
+  const quitarImagenMarca = async clave => {
+    const imgs = {
+      ...(negocio.imagenes || {})
+    };
+    delete imgs[clave];
+    await guardarNegocio({
+      imagenes: imgs
+    }, "Vuelve la imagen original");
+  };
   return {
     negocio,
     servicios,
     guardarNegocio,
     guardarServicio,
     eliminarServicio,
-    subirFoto
+    subirFoto,
+    subirImagenMarca,
+    quitarImagenMarca
   };
 }
 
@@ -2308,6 +2350,84 @@ function VistaAjustes({
     d: I.check,
     s: 14
   }), "Guardar y publicar")), /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      display: "grid",
+      gap: 10,
+      gridColumn: "1 / -1"
+    }
+  }, /*#__PURE__*/React.createElement("h3", {
+    style: {
+      font: "700 15px var(--cond)",
+      textTransform: "uppercase",
+      letterSpacing: ".05em"
+    }
+  }, "Im\xE1genes de marca"), /*#__PURE__*/React.createElement("span", {
+    className: "tenue"
+  }, "El banner a lo ancho y el logo del pie de p\xE1gina. Subir reemplaza; \"Original\" vuelve al arte del sitio. Las fotos de los cortes se cambian abajo, en la carta."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gap: 12,
+      gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))"
+    }
+  }, [["banner", "Banner de marca", "/assets/banner.jpeg", {
+    width: "100%",
+    height: 74,
+    objectFit: "cover"
+  }], ["logo", "Logo del pie", "/assets/logo-911-urban-salon-dark.png", {
+    height: 74,
+    objectFit: "contain"
+  }]].map(([clave, titulo, porDefecto, estilo]) => {
+    const subida = (n.imagenes || {})[clave];
+    return /*#__PURE__*/React.createElement("div", {
+      key: clave,
+      style: {
+        display: "grid",
+        gap: 8
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "eyebrow"
+    }, titulo, subida ? " · personalizada" : " · original"), /*#__PURE__*/React.createElement("img", {
+      src: subida || porDefecto,
+      alt: "",
+      style: {
+        ...estilo,
+        borderRadius: 8,
+        border: "1px solid var(--line)",
+        background: "var(--panel)",
+        justifySelf: "start"
+      }
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 6
+      }
+    }, /*#__PURE__*/React.createElement("label", {
+      className: "btn ghost sm",
+      style: {
+        cursor: "pointer"
+      }
+    }, /*#__PURE__*/React.createElement(Ic, {
+      d: I.foto,
+      s: 13
+    }), "Subir nueva", /*#__PURE__*/React.createElement("input", {
+      type: "file",
+      accept: "image/jpeg,image/png,image/webp",
+      style: {
+        display: "none"
+      },
+      onChange: e => {
+        C.subirImagenMarca(clave, e.target.files[0]);
+        e.target.value = "";
+      }
+    })), subida && /*#__PURE__*/React.createElement("button", {
+      className: "btn ghost sm",
+      onClick: () => C.quitarImagenMarca(clave)
+    }, /*#__PURE__*/React.createElement(Ic, {
+      d: I.atras,
+      s: 13
+    }), "Original")));
+  }))), /*#__PURE__*/React.createElement("div", {
     className: "card",
     style: {
       display: "grid",
