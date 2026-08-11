@@ -88,6 +88,8 @@ main.zona{padding:22px 26px;display:grid;gap:18px;align-content:start}
 
 /* Tabla */
 .tabla-wrap{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow-x:auto}
+.turno-card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;gap:9px}
+.turno-card.dim{opacity:.55}
 table.tabla{width:100%;border-collapse:collapse;min-width:760px}
 .tabla th{font:600 11px/1 var(--cond);text-transform:uppercase;letter-spacing:.1em;color:var(--tx-3);
   text-align:left;padding:12px 14px;border-bottom:1px solid var(--line)}
@@ -499,8 +501,48 @@ function MenuFila({ t, admin, ops, abierto, setAbierto }) {
   );
 }
 
+/* En el celular la cola no es una tabla: es una tarjeta por turno, con lo
+   importante primero (código+hora+estado, cliente, servicios) y la acción
+   principal al ancho del pulgar. La tabla se corta con scroll horizontal y
+   esconde justo las columnas de acción. */
+function useMovilPanel() {
+  const [m, setM] = React.useState(() => window.matchMedia("(max-width: 560px)").matches);
+  React.useEffect(() => {
+    const q = window.matchMedia("(max-width: 560px)");
+    const f = e => setM(e.matches);
+    q.addEventListener("change", f);
+    return () => q.removeEventListener("change", f);
+  }, []);
+  return m;
+}
+
+function TarjetaTurno({ t, T, ops, menu, setMenu, onConfirmar }) {
+  return (
+    <div className={"turno-card" + (t.estado === "listo" || t.estado === "cancelado" ? " dim" : "")}>
+      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <span className="cod">{t.codigo}</span>
+        <HoraTurno t={t} />
+        <span style={{ marginLeft: "auto" }}><EstadoTurno t={t} /></span>
+      </div>
+      <div style={{ color: "var(--tx)", fontWeight: 700, fontSize: 16 }}>{t.cliente}</div>
+      <div className="tenue" style={{ fontSize: 13 }}>{t.servicios} · {t.barbero_nombre}</div>
+      {t.estado === "cancelado" && t.motivo_no_atencion && <div style={{ color: "#FF8A8E", fontSize: 12 }}>Motivo: {t.motivo_no_atencion}</div>}
+      {["espera", "silla", "pausado"].includes(t.estado) || t.estado === "listo" ? (
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {t.estado === "espera" && <button className="btn outline" style={{ flex: 1 }} onClick={() => T.llamar(t)}><Ic d={I.play} s={13} />Llamar</button>}
+          {t.estado === "silla" && <button className="btn ok" style={{ flex: 1 }} onClick={() => onConfirmar(t)}><Ic d={I.check} s={13} />Terminar</button>}
+          {t.estado === "pausado" && <button className="btn outline" style={{ flex: 1 }} onClick={() => T.reanudar(t)}><Ic d={I.play} s={13} />Reanudar</button>}
+          {t.estado === "listo" && <span style={{ flex: 1 }} />}
+          <MenuFila t={t} admin ops={ops} abierto={menu} setAbierto={setMenu} />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 /* ── Vista: cola (admin) ── */
 function VistaCola({ T, P, user, nombreUser }) {
+  const movil = useMovilPanel();
   const [menu, setMenu] = React.useState(null);
   const [reag, setReag] = React.useState(null);
   const [borra, setBorra] = React.useState(null);
@@ -529,6 +571,12 @@ function VistaCola({ T, P, user, nombreUser }) {
         {[10, 15, 30].map(n => <button key={n} className="btn outline sm" onClick={() => T.correr(n)}>+{n} min</button>)}
       </div>
 
+      {movil ? (
+        <div style={{ display: "grid", gap: 10 }}>
+          {T.cola.map(t => <TarjetaTurno key={t.id} t={t} T={T} ops={ops} menu={menu} setMenu={setMenu} onConfirmar={setConfirma} />)}
+          {!T.cola.length && <div className="turno-card tenue" style={{ textAlign: "center", padding: 24 }}>Sin turnos hoy. Crea el primero con "Nuevo turno".</div>}
+        </div>
+      ) : (
       <div className="tabla-wrap">
         <table className="tabla">
           <thead><tr><th>Código</th><th>Cliente</th><th>Servicios</th><th>Barbero</th><th>Hora</th><th>Estado</th><th style={{ textAlign: "right" }}>Acciones</th></tr></thead>
@@ -555,6 +603,7 @@ function VistaCola({ T, P, user, nombreUser }) {
           </tbody>
         </table>
       </div>
+      )}
 
       {reag && <DialogoReagendar t={reag} onOk={h => { T.reagendar(reag, h); setReag(null); }} onNo={() => setReag(null)} />}
       {borra && (
