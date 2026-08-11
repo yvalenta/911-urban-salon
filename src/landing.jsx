@@ -592,7 +592,10 @@ function Footer() {
         <div style={{ display: "grid", gap: "var(--sp-3)", alignContent: "start" }}>
           <h4 style={{ font: "700 var(--fs-sm)/1 var(--font-condensed)", letterSpacing: "var(--ls-wider)", color: "var(--text-strong)", margin: 0 }}>Contacto</h4>
           <a href={"https://wa.me/" + D.telefono} style={{ display: "flex", gap: 8, alignItems: "center", font: "var(--type-small)" }}><Icon name="message-circle" size={16} />WhatsApp</a>
-          <a href="#" style={{ display: "flex", gap: 8, alignItems: "center", font: "var(--type-small)" }}><Icon name="instagram" size={16} />@911urbansalon</a>
+          {/* Lucide 1.x retiró los iconos de marcas: el glifo de Instagram va inline. */}
+          <a href="#" style={{ display: "flex", gap: 8, alignItems: "center", font: "var(--type-small)" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect width="20" height="20" x="2" y="2" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
+            @911urbansalon</a>
           {/* Ruta en Google Maps desde la ubicación del visitante: sin origen,
               Maps usa "tu ubicación". El destino sale de D.direccion, así que
               editar la dirección en /admin también corrige el enlace. */}
@@ -716,11 +719,12 @@ const TEMAS_911=[
   {id:"",nombre:"911 Urbano · naranja",color:"#F07A28"},
   {id:"azul",nombre:"Acero · azul",color:"#5578BE"},
   {id:"rojo",nombre:"Vandal · rojo 911",color:"#C6403E"},
-  {id:"platino",nombre:"Platino · blanco",color:"#E6E6EC"}
+  {id:"platino",nombre:"Platino · blanco",color:"#E6E6EC"},
+  {id:"clasico",nombre:"Clásico · arena",color:"#AD987D"}
 ];
 /* Cada estilo tiene su tipografía de titulares; la fuente se baja SOLO cuando
    el visitante elige ese estilo (Permanent Marker ya viene con la página). */
-const FUENTES_TEMA={ azul:"Archivo+Black", platino:"Oswald:wght@500" };
+const FUENTES_TEMA={ azul:"Archivo+Black", platino:"Oswald:wght@500", clasico:"Playfair+Display:ital,wght@0,500;0,600;1,500" };
 function cargarFuenteTema(id){
   const f=FUENTES_TEMA[id];
   if(!f||document.getElementById("fnt-"+id))return;

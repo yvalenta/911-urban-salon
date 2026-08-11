@@ -156,7 +156,11 @@ los dispositivos ven el mismo tiempo.
 - Barberos (rol limitado): usuario = su nombre (`samuel`, `mateo`, `julian`),
   contraseña compartida inicial `911corte`.
 
-**Rol admin** — vistas Cola / Resumen / Productos / Sala / Ajustes: tabla del
+**Rol admin** — vistas Cola / Resumen / Productos / Sala / Ajustes:
+**Resumen** es un dashboard: además de los totales trae el gráfico de
+ingresos de los últimos 14 días (servicios + productos, RPC `resumen_diario`
+de db/15) y el top del equipo del día; al cobrar hay chips de descuento
+rápido (−10/−20/−50%). tabla del
 día con minutos transcurridos, Llamar, pausar/reanudar, adelantar/retrasar,
 reagendar, eliminar, correr citas, "Siguiente turno" y "Nuevo turno".
 "Terminar" abre la **confirmación de atención** (valor del servicio +

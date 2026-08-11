@@ -454,6 +454,11 @@ function DialogoConfirmar({ t, productos, onOk, onNo }) {
   const [monto, setMonto] = React.useState(t.precio_total != null ? String(t.precio_total) : "");
   const [items, setItems] = React.useState([]);
   const [sel, setSel] = React.useState(productos[0] ? productos[0].id : "");
+  /* Descuentos rápidos estilo POS: chips que parten del precio del servicio.
+     "Completo" vuelve al valor original; el monto sigue editable a mano. */
+  const base = t.precio_total || 0;
+  const [desc, setDesc] = React.useState(0);
+  const aplicarDesc = pct => { setDesc(pct); setMonto(String(Math.round(base * (1 - pct / 100) / 500) * 500)); };
   const agregar = () => {
     const pr = productos.find(p => p.id === sel);
     if (!pr) return;
@@ -472,8 +477,15 @@ function DialogoConfirmar({ t, productos, onOk, onNo }) {
         <h3>Confirmar atención · {t.codigo}</h3>
         <p style={{ margin: 0 }} className="tenue">{t.cliente} · {t.servicios}. Si confirmas por error, puedes devolverlo desde el menú del turno.</p>
         <label className="fld"><span>Valor de los servicios (COP)</span>
-          <input className="input" type="number" min="0" step="1000" value={monto} onChange={e => setMonto(e.target.value)} placeholder="50000" />
+          <input className="input" type="number" min="0" step="1000" value={monto} onChange={e => { setMonto(e.target.value); setDesc(-1); }} placeholder="50000" />
         </label>
+        {base > 0 && (
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {[[0, "Completo"], [10, "−10%"], [20, "−20%"], [50, "−50%"]].map(([pct, etq]) => (
+              <button key={pct} type="button" className={"btn sm " + (desc === pct ? "primary" : "outline")} onClick={() => aplicarDesc(pct)}>{etq}</button>
+            ))}
+          </div>
+        )}
         {productos.length > 0 && (
           <div style={{ display: "grid", gap: 8 }}>
             <span className="eyebrow">Productos vendidos (opcional)</span>
@@ -722,11 +734,41 @@ function VistaSala({ T }) {
 }
 
 /* ── Vista: resumen del día (admin) ── */
+/* Histórico por día para el dashboard (RPC resumen_diario, db/15). */
+function useResumenDiario() {
+  const [dias, setDias] = React.useState([]);
+  React.useEffect(() => {
+    const hasta = new Date();
+    const desde = new Date(hasta.getTime() - 13 * 86400000);
+    const iso = d => d.toLocaleDateString("en-CA");
+    sb.rpc("resumen_diario", { desde: iso(desde), hasta: iso(hasta) })
+      .then(({ data }) => { if (data) setDias(data); });
+  }, []);
+  return dias;
+}
+
+const DIAS_CORTO = ["D", "L", "M", "X", "J", "V", "S"];
+
 function VistaResumen({ T, V }) {
   const atendidos = T.cola.filter(t => t.estado === "listo");
   const noAtendidos = T.cola.filter(t => t.estado === "cancelado");
   const totalServicios = atendidos.reduce((a, t) => a + (t.precio_total || 0), 0);
   const totalProductos = V.ventas.reduce((a, v) => a + v.precio * v.cantidad, 0);
+  const historia = useResumenDiario();
+  const topeDia = Math.max(1, ...historia.map(d => Number(d.servicios_cop) + Number(d.productos_cop)));
+  /* Top del equipo hoy: servicios cobrados por barbero + ventas por vendedor. */
+  const porPersona = {};
+  atendidos.forEach(t => {
+    const p = porPersona[t.barbero_nombre] = porPersona[t.barbero_nombre] || { atendidos: 0, cop: 0 };
+    p.atendidos += 1; p.cop += t.precio_total || 0;
+  });
+  V.ventas.forEach(v => {
+    if (!v.vendedor) return;
+    const p = porPersona[v.vendedor] = porPersona[v.vendedor] || { atendidos: 0, cop: 0 };
+    p.cop += v.precio * v.cantidad;
+  });
+  const top = Object.entries(porPersona).sort((a, b) => b[1].cop - a[1].cop);
+  const topeTop = Math.max(1, ...top.map(([, p]) => p.cop));
   return (
     <React.Fragment>
       <div className="stats" style={{ gridTemplateColumns: "repeat(4,1fr)" }}>
@@ -734,6 +776,57 @@ function VistaResumen({ T, V }) {
         <div className="stat"><span className="eyebrow">No atendidos</span><b>{noAtendidos.length}</b></div>
         <div className="stat"><span className="eyebrow">Servicios</span><b style={{ fontSize: 24 }}>{fmtCOP(totalServicios)}</b></div>
         <div className="stat naranja"><span className="eyebrow">Total día (+ productos)</span><b style={{ fontSize: 24 }}>{fmtCOP(totalServicios + totalProductos)}</b></div>
+      </div>
+
+      <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", alignItems: "start" }}>
+        <div className="card" style={{ display: "grid", gap: 12 }}>
+          <h3 style={{ font: "700 15px var(--cond)", textTransform: "uppercase", letterSpacing: ".05em" }}>Ingresos · últimos 14 días</h3>
+          {/* Alturas en píxeles, no en %: dentro de un track auto de grid el
+             porcentaje no resuelve y las barras colapsaban a nada. */}
+          <div style={{ display: "flex", gap: 4, alignItems: "flex-end", height: 120 }}>
+            {historia.map(d => {
+              const srv = Number(d.servicios_cop), prod = Number(d.productos_cop);
+              const total = srv + prod;
+              const px = v => Math.round(110 * v / topeDia);
+              return (
+                <div key={d.dia} title={d.dia + " · servicios " + fmtCOP(srv) + " · productos " + fmtCOP(prod)}
+                  style={{ flex: 1, display: "grid", alignContent: "end", gap: 1 }}>
+                  {prod > 0 && <div style={{ height: px(prod), background: "var(--info)", borderRadius: "3px 3px 0 0", opacity: .85 }} />}
+                  <div style={{ height: Math.max(total > 0 ? 4 : 2, px(srv)), background: total > 0 ? "var(--brand)" : "var(--raised)", borderRadius: prod > 0 ? "0" : "3px 3px 0 0" }} />
+                </div>
+              );
+            })}
+            {!historia.length && <span className="tenue">Cargando…</span>}
+          </div>
+          <div style={{ display: "flex", gap: 4 }}>
+            {historia.map(d => (
+              <span key={d.dia} className="tenue" style={{ flex: 1, textAlign: "center", fontSize: 10 }}>
+                {DIAS_CORTO[new Date(d.dia + "T12:00:00").getDay()]}
+              </span>
+            ))}
+          </div>
+          <span className="tenue" style={{ fontSize: 12 }}>
+            <span style={{ color: "var(--brand)" }}>■</span> servicios · <span style={{ color: "var(--info)" }}>■</span> productos
+          </span>
+        </div>
+
+        <div className="card" style={{ display: "grid", gap: 12 }}>
+          <h3 style={{ font: "700 15px var(--cond)", textTransform: "uppercase", letterSpacing: ".05em" }}>Top del equipo · hoy</h3>
+          {top.map(([nombre, p]) => (
+            <div key={nombre} style={{ display: "grid", gap: 5 }}>
+              <div style={{ display: "flex", gap: 10, alignItems: "baseline" }}>
+                <span className="avatar" style={{ width: 26, height: 26, fontSize: 12 }}>{nombre[0]}</span>
+                <b style={{ color: "var(--tx)" }}>{nombre}</b>
+                <span className="tenue">{p.atendidos} atendido{p.atendidos === 1 ? "" : "s"}</span>
+                <b style={{ marginLeft: "auto", color: "var(--brand)" }}>{fmtCOP(p.cop)}</b>
+              </div>
+              <div style={{ height: 5, background: "var(--raised)", borderRadius: 99 }}>
+                <div style={{ height: "100%", width: Math.round(100 * p.cop / topeTop) + "%", background: "var(--brand)", borderRadius: 99 }} />
+              </div>
+            </div>
+          ))}
+          {!top.length && <span className="tenue">Aún no hay atenciones ni ventas hoy.</span>}
+        </div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, alignItems: "start" }}>
         <div className="card" style={{ display: "grid", gap: 10 }}>
