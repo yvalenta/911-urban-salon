@@ -139,13 +139,49 @@ tr.dim td{opacity:.45}
 .turno-item{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
 
 @media (max-width:860px){
-  .shell{grid-template-columns:1fr}
+  /* minmax(0,1fr) y min-width:0: un track "1fr" y los items de grid/flex no
+     encogen por debajo de su contenido, y la barra empujaba la página a 665px. */
+  .shell{grid-template-columns:minmax(0,1fr)}
+  .side,main.zona{min-width:0}
   .side{position:static;height:auto;flex-direction:row;align-items:center;border-right:0;border-bottom:1px solid var(--line)}
   .side nav{display:flex;gap:4px;flex:1}
   .user-card{margin:0;border:0;padding:0}
-  .user-card .quien span.det{display:none}
+  /* !important: el markup trae display:grid inline y le ganaría al CSS. */
+  .user-card .quien span.det{display:none !important}
+  /* min-width:0 rompe el "min-width:auto" de flex: sin esto el nav no encoge
+     y estira la barra entera más allá del viewport. */
+  .side nav{flex:1 1 0;min-width:0;overflow-x:auto;scrollbar-width:none}
+  .side nav::-webkit-scrollbar{display:none}
+  .nav-item{white-space:nowrap;flex:0 0 auto}
   .stats{grid-template-columns:repeat(2,1fr)}
   main.zona{padding:16px}
+}
+/* ── Teléfono: el panel se opera con el pulgar en el local ── */
+@media (max-width:560px){
+  .side{padding:8px 10px;gap:8px;position:sticky;top:0;z-index:40;background:var(--panel)}
+  .side .marca img{height:28px}
+  .side .marca div{display:none}
+  /* La navegación desliza horizontal en vez de encoger los botones. */
+  .side nav{overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .side nav::-webkit-scrollbar{display:none}
+  .nav-item{padding:10px 12px;white-space:nowrap;flex:0 0 auto}
+  .topbar h1{font-size:21px}
+  .topbar .tenue{display:none} /* la fecha completa no cabe; la cola ya dice el día */
+  main.zona{padding:12px;gap:12px}
+  .stats{gap:8px}
+  .stat{padding:12px}
+  .stat b{font-size:22px}
+  /* Dedos, no cursores: todo lo tocable crece. */
+  .btn{min-height:40px}
+  .btn.sm{min-height:36px}
+  .icon-btn{width:38px;height:38px}
+  .tabla td{padding:12px 10px}
+  .dialogo{max-height:88vh;overflow-y:auto}
+  .velo{padding:10px;align-items:end;display:flex} /* el diálogo sube desde abajo, estilo hoja móvil */
+  .dialogo{width:100%;border-radius:14px 14px 0 0}
+  /* Ajustes: las filas del equipo (nombre/rol/especialidad en 3 columnas
+     inline) se apilan — 3 inputs de 90px no se pueden escribir con el dedo. */
+  div[style*="130px"]{grid-template-columns:1fr !important}
 }
 </style>
 <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" integrity="sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z" crossorigin="anonymous"></script>
