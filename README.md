@@ -18,6 +18,10 @@ Landing pública y panel administrativo de turnos de la barbería **911 Urban Sa
 ├── admin/
 │   └── index.html        ← panel administrativo (sirve en /admin)
 ├── admin.html            ← solo redirige a /admin/
+├── src/                  ← FUENTES del código de ambas apps (JSX legible)
+│   ├── landing.jsx       ← overrides + montaje de la página pública
+│   └── panel.jsx         ← toda la app del panel
+├── ops/                  ← scripts de operación (compilar, respaldo, limpieza)
 ├── assets/               ← imágenes de marca que usa el sitio
 │   ├── logo-911-urban-salon-dark.png / -light.png
 │   ├── logo-911-graffiti-tag.png
@@ -47,9 +51,10 @@ La landing es autocontenida y lleva, en orden:
 
 1. **Tokens CSS** del design system (colores, tipografía, espaciado, efectos) +
    una capa responsive al final del `<style>`.
-2. **CDNs**: React 18, Babel standalone, Lucide (iconos), AOS (animaciones al
-   hacer scroll — solo la landing) y Google Fonts (Anton, Barlow, Barlow
-   Condensed, Permanent Marker).
+2. **CDNs**: React 18 (producción), Lucide (iconos), AOS (solo la landing) y
+   Google Fonts. **Ya no viaja Babel al navegador**: el JSX se compila una vez
+   en desarrollo (~132 KB gzip de CDN en total; antes ~1 MB y 1–2 s de
+   compilación por visita en un celular).
 3. **Bundle del design system** (`<script>` precompilado): los 18 componentes
    (Button, Card, Badge, ServiceCard, SlotPicker, TurnoTicket…) y las secciones
    compiladas de la página. *Nota de mantenimiento:* en este bundle los exports
@@ -62,9 +67,10 @@ La landing es autocontenida y lleva, en orden:
    `servicios` al cargar (espera hasta ~1.2 s antes de montar; si llega más
    tarde, re-renderiza). Mapea las filas al formato de `DATA_911` y rearma
    los textos de prosa que citan precios u horarios.
-6. **Overrides** (`<script type="text/babel">`): versiones mejoradas de
-   TurnosAsistente (multiservicio), Cortes, Spa, Horarios y Footer que
-   reemplazan a las del bundle. El montaje final renderiza `<App/>`.
+6. **App compilada** (`<script id="app-landing">`): los overrides
+   (TurnosAsistente real, Cortes, Spa, Horarios, Footer…), el selector de
+   estilos y el montaje. **Se edita en `src/landing.jsx`** y se inyecta con
+   `ops/compilar.sh` — nunca directamente en el HTML.
 
 El diseño proviene del proyecto **"911 Urban Salón Design System"** en
 claude.ai/design (id `1e06a957-8ab0-4045-96ed-9726db0626f4`). La API de ese
@@ -217,6 +223,7 @@ y abrir `http://localhost:8931/` (o `/admin/`).
 | Renombrar el equipo visible en la página | Ajustes → "Equipo en la página" |
 | Cambiar contraseña del panel | `psql` (ver sección del panel) |
 | Actualizar el contenido de respaldo | `ruby ops/regenerar_respaldo.rb` (reescribe el bloque `DATA_911` de `index.html` desde la base) |
+| Tocar el código de la landing o el panel | Editar `src/landing.jsx` o `src/panel.jsx` → `ops/compilar.sh` (requiere `npm install` una vez) → probar → commit |
 
 ## Limitaciones conocidas
 

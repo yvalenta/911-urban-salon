@@ -5,3 +5,4 @@
 Cuenta_de_cobro*
 *.pdf
 .claude/worktrees/
+node_modules/

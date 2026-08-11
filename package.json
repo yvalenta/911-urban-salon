@@ -1,0 +1,11 @@
+{
+  "name": "911-urban-salon",
+  "private": true,
+  "description": "Compilación única del JSX de src/ hacia los HTML publicados (ops/compilar.sh). El sitio publicado no usa node.",
+  "scripts": { "compilar": "ops/compilar.sh" },
+  "devDependencies": {
+    "@babel/cli": "^7.28.3",
+    "@babel/core": "^7.28.4",
+    "@babel/preset-react": "^7.27.1"
+  }
+}
