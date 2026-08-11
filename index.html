@@ -14,12 +14,12 @@
   --naranja-600:#D6631A; --naranja-700:#A94B10; --naranja-800:#7A350A;
   --naranja-900:#4A1F05;
 
-  /* ── Azul · el azul del logo y del poste de barbero (secundario) ── */
-  --azul-50:#E7F2FA; --azul-100:#C7E1F4; --azul-200:#8FC2E7;
-  --azul-300:#5FA8DE; --azul-400:#2E8ACC; --azul-500:#0F6BB4;
-  --azul-600:#0A548F; --azul-700:#073A64; --azul-800:#052842;
-  --azul-900:#031A2C;
-  --azul-neon:#2E9BF0;      /* resplandor de neón del flyer de horarios */
+  /* ── Azul · afinado al azul cobalto del banner de marca (secundario) ── */
+  --azul-50:#E9EFFD; --azul-100:#CBD9FB; --azul-200:#97B3F6;
+  --azul-300:#6C8FF5; --azul-400:#3D6BEF; --azul-500:#2450E0;
+  --azul-600:#1B3FB0; --azul-700:#132C7C; --azul-800:#0C1D52;
+  --azul-900:#071233;
+  --azul-neon:#3D6BFF;      /* resplandor de neón, ahora en el cobalto del banner */
 
   /* ── Negro · asfalto, papel quemado, muro ── */
   --negro-950:#050506; --negro-900:#0A0A0B; --negro-800:#131316;
@@ -42,7 +42,7 @@
   --surface-invert:var(--blanco);
   --surface-accent:var(--naranja-500);
   --surface-accent-soft:rgba(240,122,40,.12);
-  --surface-blue-soft:rgba(15,107,180,.16);
+  --surface-blue-soft:rgba(36,80,224,.16);
 
   --text-strong:var(--blanco);
   --text-body:var(--gris-200);
@@ -227,6 +227,26 @@ img{max-width:100%;display:block}
 .u-wall-dim::after{content:"";position:absolute;inset:0;background:rgba(5,5,6,.82)}
 .u-container{width:100%;max-width:var(--container);margin-inline:auto;padding-inline:var(--gutter)}
 
+/* ══ Temas · 4 estilos a gusto del visitante (selector abajo a la izquierda).
+   Cada tema reescribe la rampa de ACENTO (los alias --naranja-* funcionan como
+   "acento" en toda la página) y el color del texto sobre el acento; el resto
+   de la identidad — negro asfalto, tipografías, graffiti — es común. La
+   elección persiste en localStorage (tema911). ══ */
+:root[data-tema="azul"]{
+  --naranja-300:#7EA0FF; --naranja-400:#5480F5; --naranja-500:#2E5CE6; --naranja-600:#1E44BD;
+  --surface-accent-soft:rgba(46,92,230,.15);
+  --text-on-accent:var(--blanco); /* cobalto es oscuro: texto blanco */
+}
+:root[data-tema="rojo"]{
+  --naranja-300:#F09090; --naranja-400:#E14B4B; --naranja-500:#D01F26; --naranja-600:#A81319;
+  --surface-accent-soft:rgba(208,31,38,.15);
+  --text-on-accent:var(--blanco); /* rojo es oscuro: texto blanco */
+}
+:root[data-tema="platino"]{
+  --naranja-300:#F4F4F8; --naranja-400:#E9E9EF; --naranja-500:#DFDFE8; --naranja-600:#B9B9C2;
+  --surface-accent-soft:rgba(223,223,232,.12);
+}
+
 /* ══ Página ══ */
 html{scroll-behavior:smooth}
 /* Sin paneo lateral: las entradas de AOS (fade-left/right) desplazan bloques
@@ -262,6 +282,10 @@ html, body{overflow-x:hidden;overflow-x:clip}
   div[style*="grid-template-columns: 1fr 1fr"]{ grid-template-columns: 1fr !important; }
 }
 </style>
+<script>
+/* El tema elegido se aplica ANTES de pintar, para que no parpadee el acento. */
+try { document.documentElement.dataset.tema = localStorage.getItem("tema911") || ""; } catch (e) {}
+</script>
 <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" integrity="sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
@@ -4465,6 +4489,49 @@ Object.assign(window, { TurnosAsistente, Servicios, Cortes, Spa, ComoFunciona, R
 <!-- ══ Montaje ══ -->
 <script type="text/babel" data-presets="react">
 
+/* Banda de marca: el banner graffiti a lo ancho, entre el hero y la carta. */
+function BannerMarca(){
+  return (
+    <div aria-hidden="true" style={{borderBlock:"1px solid var(--border-hair)",background:"var(--negro-950)"}}>
+      <img src="assets/banner.jpeg" alt="" loading="lazy"
+        style={{display:"block",width:"100%",height:"clamp(140px, 22vw, 300px)",objectFit:"cover"}}/>
+    </div>
+  );
+}
+
+/* Selector de estilo: 4 identidades de acento a gusto del visitante. La
+   elección vive en localStorage y el CSS de :root[data-tema] hace el resto. */
+const TEMAS_911=[
+  {id:"",nombre:"911 Urbano · naranja",color:"#F07A28"},
+  {id:"azul",nombre:"Eléctrico · cobalto",color:"#2E5CE6"},
+  {id:"rojo",nombre:"Vandal · rojo 911",color:"#D01F26"},
+  {id:"platino",nombre:"Platino · blanco",color:"#E6E6EC"}
+];
+function SelectorTema(){
+  const [tema,setTema]=React.useState(()=>{try{return localStorage.getItem("tema911")||"";}catch(e){return "";}});
+  const aplicar=id=>{
+    setTema(id);
+    document.documentElement.dataset.tema=id;
+    try{localStorage.setItem("tema911",id);}catch(e){}
+  };
+  return (
+    <div role="group" aria-label="Estilo de la página"
+      style={{position:"fixed",left:14,bottom:16,zIndex:60,display:"flex",gap:9,alignItems:"center",
+        padding:"9px 12px",background:"rgba(10,10,11,.88)",border:"1px solid var(--border-hair)",
+        borderRadius:999,backdropFilter:"blur(6px)"}}>
+      <span style={{font:"700 var(--fs-3xs)/1 var(--font-condensed)",textTransform:"uppercase",
+        letterSpacing:"var(--ls-wider)",color:"var(--text-faint)"}}>Estilo</span>
+      {TEMAS_911.map(t=>(
+        <button key={t.id} type="button" title={t.nombre} aria-label={"Estilo "+t.nombre} aria-pressed={tema===t.id}
+          onClick={()=>aplicar(t.id)}
+          style={{width:18,height:18,borderRadius:"50%",cursor:"pointer",background:t.color,padding:0,
+            border:"2px solid "+(tema===t.id?"var(--blanco)":"rgba(255,255,255,.25)"),
+            transform:tema===t.id?"scale(1.15)":"none",transition:"transform .15s"}}/>
+      ))}
+    </div>
+  );
+}
+
 function App(){
   const [servicioPedido,setServicioPedido]=React.useState(null);
   const [version,setVersion]=React.useState(0);
@@ -4490,6 +4557,7 @@ function App(){
   return (<React.Fragment>
     <NavBar onCta={()=>irATurnos(null)}/>
     <Hero onCta={()=>irATurnos(null)}/>
+    <BannerMarca/>
     <Servicios/>
     <Cortes onPedir={irATurnos}/>
     <Spa/>
@@ -4501,6 +4569,7 @@ function App(){
     <Faq onCta={()=>irATurnos(null)}/>
     <Footer/>
     <BarraWhatsApp/>
+    <SelectorTema/>
   </React.Fragment>);
 }
 let intentos=0;
