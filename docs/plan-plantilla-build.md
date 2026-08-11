@@ -6,6 +6,11 @@ pesaron en crudo y con `gzip -9` (≈ lo que viaja por la red).
 
 ## a) Inventario de código muerto en `index.html`
 
+> **PURGADO el 2026-08-11** (commit "el bundle pierde sus 51 KB muertos"): los
+> módulos Select/PriceCard/StatBlock/datos.js/Panel.jsx completos y las 8
+> funciones reemplazadas por overrides — −51.601 B medidos, cero errores del
+> bundle tras la cirugía. Las líneas de este inventario son del archivo previo.
+
 El bloque de overrides (líneas 3768–4319) termina en
 `Object.assign(window, { TurnosAsistente, Servicios, Cortes, Spa, ComoFunciona, Resenas, Horarios, Footer })`
 (línea 4315): pisa 8 globales que el bundle ya había definido. Esos
