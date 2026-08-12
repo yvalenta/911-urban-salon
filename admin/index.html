@@ -123,7 +123,12 @@ tr.dim td{opacity:.45}
 @keyframes entra{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
 
 /* Sala */
-.sala{display:grid;gap:16px}
+/* La sala vive en el televisor del local: el arte de marca de fondo, tenue,
+   con las tarjetas sólidas encima para que el turno gigante siga mandando. */
+.sala{display:grid;gap:16px;align-content:start;position:relative;min-height:calc(100vh - 150px)}
+.sala::before{content:"";position:absolute;inset:-22px -26px;background:url('/assets/banner2.jpeg') center/cover;
+  opacity:.14;border-radius:14px;pointer-events:none}
+.sala>*{position:relative}
 .sillas{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
 .silla-card{background:var(--card);border:1px solid rgba(240,122,40,.35);border-radius:var(--r);padding:24px;display:grid;justify-items:center;gap:8px;position:relative;overflow:hidden}
 .silla-card::before{content:"";position:absolute;inset:0;background:radial-gradient(420px 200px at 50% 0%,var(--brand-soft),transparent 70%)}
