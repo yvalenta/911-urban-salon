@@ -764,11 +764,16 @@ function NavBar({ onCta }) {
    con el tema. Si en Ajustes se sube un banner propio, ese manda. */
 function BannerMarca(){
   const im = (window.DATA_911.imagenes || {});
-  if (im.banner) {
+  /* Orden de la banda: 1) banner subido en Ajustes, 2) el mural del repo
+     (assets/banner.jpeg), 3) la composición vectorial si no hay ninguno —
+     onError hace la caída sola, así un clon white-label sin arte no rompe. */
+  const [sinArchivo, setSinArchivo] = React.useState(false);
+  const src = im.banner || (!sinArchivo ? "assets/banner.jpeg" : null);
+  if (src) {
     return (
       <div aria-hidden="true" style={{borderBlock:"1px solid var(--border-hair)",background:"var(--negro-950)"}}>
-        <img src={im.banner} alt="" loading="lazy"
-          style={{display:"block",width:"100%",height:"clamp(140px, 22vw, 300px)",objectFit:"cover"}}/>
+        <img src={src} alt="" onError={() => setSinArchivo(true)}
+          style={{display:"block",width:"100%",height:"clamp(150px, 24vw, 330px)",objectFit:"cover",objectPosition:"center 42%"}}/>
       </div>
     );
   }

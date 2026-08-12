@@ -1,5 +1,12 @@
 <!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>911 Urban Salón — Barbería, spa y masajes</title>
+<meta name="description" content="Barbería, spa y masajes en El Poblado, Medellín. Pide tu turno en línea: el sistema te asigna el hueco más cercano — sin fila, sin llamadas.">
+<meta property="og:title" content="911 Urban Salón — Tu belleza, nuestra emergencia">
+<meta property="og:description" content="Barbería, spa y masajes en El Poblado, Medellín. Turnos en línea con cola en vivo.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://911-urban-salon.ynt.codes/">
+<meta property="og:image" content="https://911-urban-salon.ynt.codes/assets/banner.jpeg">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0A0A0B">
 <link rel="stylesheet" href="https://unpkg.com/aos@2.3.4/dist/aos.css" integrity="sha384-/rJKQnzOkEo+daG0jMjU1IwwY9unxt1NBw3Ef2fmOJ3PW/TfAg2KXVoWwMZQZtw9" crossorigin="anonymous">
 <style>
@@ -3939,7 +3946,12 @@ function NavBar({
    con el tema. Si en Ajustes se sube un banner propio, ese manda. */
 function BannerMarca() {
   const im = window.DATA_911.imagenes || {};
-  if (im.banner) {
+  /* Orden de la banda: 1) banner subido en Ajustes, 2) el mural del repo
+     (assets/banner.jpeg), 3) la composición vectorial si no hay ninguno —
+     onError hace la caída sola, así un clon white-label sin arte no rompe. */
+  const [sinArchivo, setSinArchivo] = React.useState(false);
+  const src = im.banner || (!sinArchivo ? "assets/banner.jpeg" : null);
+  if (src) {
     return /*#__PURE__*/React.createElement("div", {
       "aria-hidden": "true",
       style: {
@@ -3947,14 +3959,15 @@ function BannerMarca() {
         background: "var(--negro-950)"
       }
     }, /*#__PURE__*/React.createElement("img", {
-      src: im.banner,
+      src: src,
       alt: "",
-      loading: "lazy",
+      onError: () => setSinArchivo(true),
       style: {
         display: "block",
         width: "100%",
-        height: "clamp(140px, 22vw, 300px)",
-        objectFit: "cover"
+        height: "clamp(150px, 24vw, 330px)",
+        objectFit: "cover",
+        objectPosition: "center 42%"
       }
     }));
   }
