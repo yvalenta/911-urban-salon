@@ -3781,17 +3781,214 @@ function _extends() { return _extends = Object.assign ? Object.assign.bind() : f
 
 /* ══ Montaje (antes segundo <script> de la página) ══ */
 
-/* ── Logo vectorial de la marca ──
-   Tipográfico, con las variables del tema activo: el "911" y el "SALÖN" van
-   en el acento, así que combina solo con los 5 estilos (y con el serif del
-   Clásico, porque hereda --font-display). Reemplaza al viejo recorte de foto. */
+/* ── Logo vectorial de la marca — fiel al lockup original ──
+   El logo es IGUAL en todos los temas: colores y tipografías FIJOS como el
+   arte de referencia (911 y URBAN blancos delineados, SA rojo, ÖN azul con
+   el poste de barbero en la L, corona de trazo, marcador para el tagline).
+   Los temas cambian alrededor; la marca no. */
+const M = {
+  blanco: "#F7F5F2",
+  tinta: "#141417",
+  rojo: "#D01F26",
+  azul: "#2456D6",
+  teal: "#2BB3A3",
+  naranja: "#F07A28",
+  anton: '"Anton",Impact,sans-serif',
+  marker: '"Permanent Marker",cursive'
+};
+
+/* Poste de barbero que hace de "L": tubo blanco con franjas diagonales. */
+function PosteL({
+  x,
+  y,
+  alto = 34,
+  ancho = 13
+}) {
+  const id = "pole-" + x + "-" + y + "-" + alto;
+  return /*#__PURE__*/React.createElement("g", null, /*#__PURE__*/React.createElement("clipPath", {
+    id: id
+  }, /*#__PURE__*/React.createElement("rect", {
+    x: x,
+    y: y,
+    width: ancho,
+    height: alto,
+    rx: ancho / 2
+  })), /*#__PURE__*/React.createElement("rect", {
+    x: x,
+    y: y,
+    width: ancho,
+    height: alto,
+    rx: ancho / 2,
+    fill: M.blanco,
+    stroke: M.tinta,
+    strokeWidth: "2.5"
+  }), /*#__PURE__*/React.createElement("g", {
+    clipPath: "url(#" + id + ")"
+  }, [0, 1, 2, 3].map(i => /*#__PURE__*/React.createElement("rect", {
+    key: i,
+    x: x - 8,
+    y: y + 3 + i * (alto / 3.8),
+    width: ancho + 16,
+    height: alto / 7.5,
+    fill: i % 2 ? M.azul : M.rojo,
+    transform: "rotate(-24 " + (x + ancho / 2) + " " + (y + 5 + i * (alto / 3.8)) + ")"
+  }))), /*#__PURE__*/React.createElement("rect", {
+    x: x,
+    y: y,
+    width: ancho,
+    height: alto,
+    rx: ancho / 2,
+    fill: "none",
+    stroke: M.tinta,
+    strokeWidth: "2.5"
+  }));
+}
+
+/* El lockup completo en un espacio de 340×172 (216 con tagline). */
+function MarcaNucleo({
+  tagline = false
+}) {
+  return /*#__PURE__*/React.createElement("g", {
+    style: {
+      paintOrder: "stroke",
+      strokeLinejoin: "round",
+      strokeLinecap: "round"
+    }
+  }, /*#__PURE__*/React.createElement("circle", {
+    cx: "58",
+    cy: "52",
+    r: "4",
+    fill: M.teal,
+    opacity: ".85"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "286",
+    cy: "40",
+    r: "4",
+    fill: M.naranja,
+    opacity: ".85"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "34",
+    cy: "118",
+    r: "3",
+    fill: M.rojo,
+    opacity: ".8"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "306",
+    cy: "132",
+    r: "4",
+    fill: M.azul,
+    opacity: ".8"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "80",
+    cy: "160",
+    r: "3",
+    fill: M.naranja,
+    opacity: ".7"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "262",
+    cy: "164",
+    r: "3",
+    fill: M.teal,
+    opacity: ".7"
+  }), /*#__PURE__*/React.createElement("g", {
+    transform: "rotate(-3 170 16)",
+    stroke: M.blanco,
+    strokeWidth: "3.2",
+    fill: "none"
+  }, /*#__PURE__*/React.createElement("path", {
+    d: "M152 30 L159 10 L167 22 L171 6 L175 22 L183 10 L190 30 Z"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "159",
+    cy: "8",
+    r: "2.2",
+    fill: M.blanco
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "171",
+    cy: "4",
+    r: "2.2",
+    fill: M.blanco
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "183",
+    cy: "8",
+    r: "2.2",
+    fill: M.blanco
+  })), /*#__PURE__*/React.createElement("text", {
+    x: "170",
+    y: "88",
+    textAnchor: "middle",
+    fill: M.blanco,
+    stroke: M.tinta,
+    strokeWidth: "6",
+    style: {
+      font: "400 58px " + M.anton,
+      letterSpacing: "3px"
+    },
+    transform: "rotate(-3 170 66)"
+  }, "911"), /*#__PURE__*/React.createElement("text", {
+    x: "170",
+    y: "134",
+    textAnchor: "middle",
+    fill: M.blanco,
+    stroke: M.tinta,
+    strokeWidth: "5",
+    style: {
+      font: "42px " + M.marker
+    },
+    transform: "rotate(-2 170 120)"
+  }, "URBAN"), /*#__PURE__*/React.createElement("g", {
+    transform: "rotate(-2 170 156)"
+  }, /*#__PURE__*/React.createElement("text", {
+    x: "157",
+    y: "166",
+    textAnchor: "end",
+    fill: M.rojo,
+    stroke: M.tinta,
+    strokeWidth: "4",
+    style: {
+      font: "32px " + M.marker
+    }
+  }, "SA"), /*#__PURE__*/React.createElement(PosteL, {
+    x: 162,
+    y: 134
+  }), /*#__PURE__*/React.createElement("text", {
+    x: "181",
+    y: "166",
+    fill: M.azul,
+    stroke: M.tinta,
+    strokeWidth: "4",
+    style: {
+      font: "32px " + M.marker
+    }
+  }, "\xD6N")), tagline && /*#__PURE__*/React.createElement("g", {
+    transform: "rotate(-2 170 195)"
+  }, /*#__PURE__*/React.createElement("text", {
+    x: "170",
+    y: "190",
+    textAnchor: "middle",
+    fill: M.blanco,
+    stroke: M.tinta,
+    strokeWidth: "3.2",
+    style: {
+      font: "16px " + M.marker
+    }
+  }, "TU BELLEZA,"), /*#__PURE__*/React.createElement("text", {
+    x: "170",
+    y: "211",
+    textAnchor: "middle",
+    fill: M.blanco,
+    stroke: M.tinta,
+    strokeWidth: "3.2",
+    style: {
+      font: "16px " + M.marker
+    }
+  }, "NUESTRA EMERGENCIA")));
+}
 function LogoMarca({
   alto = 96,
   tagline = false
 }) {
-  const alto2 = tagline ? 150 : 128;
   return /*#__PURE__*/React.createElement("svg", {
-    viewBox: "0 0 340 " + alto2,
+    viewBox: "0 0 340 " + (tagline ? 218 : 172),
     height: alto,
     "aria-label": "911 Urban Sal\xF3n",
     role: "img",
@@ -3799,97 +3996,68 @@ function LogoMarca({
       display: "block",
       overflow: "visible"
     }
-  }, /*#__PURE__*/React.createElement("path", {
-    d: "M148 14 l7 -10 7 6 8 -9 8 9 7 -6 7 10 -22 4 z",
-    fill: "var(--blanco)",
-    opacity: ".92",
-    transform: "rotate(-4 170 10)"
-  }), /*#__PURE__*/React.createElement("text", {
-    x: "170",
-    y: "56",
-    textAnchor: "middle",
-    fill: "var(--naranja-500)",
-    stroke: "var(--negro-950)",
-    strokeWidth: "1",
-    style: {
-      font: "400 52px var(--font-display)",
-      letterSpacing: "2px"
-    },
-    transform: "rotate(-2 170 40)"
-  }, "911"), /*#__PURE__*/React.createElement("text", {
-    x: "170",
-    y: "97",
-    textAnchor: "middle",
-    fill: "var(--blanco)",
-    style: {
-      font: "400 36px var(--font-display)",
-      letterSpacing: "8px"
-    }
-  }, "URBAN"), /*#__PURE__*/React.createElement("text", {
-    x: "170",
-    y: "124",
-    textAnchor: "middle",
-    fill: "var(--naranja-500)",
-    style: {
-      font: "400 21px var(--font-display)",
-      letterSpacing: "12px"
-    },
-    transform: "rotate(-1.5 170 116)"
-  }, "SAL\xD6N"), tagline && /*#__PURE__*/React.createElement("text", {
-    x: "170",
-    y: "146",
-    textAnchor: "middle",
-    fill: "var(--text-muted)",
-    style: {
-      font: "600 10.5px var(--font-condensed)",
-      letterSpacing: "3px",
-      textTransform: "uppercase"
-    }
-  }, "Tu belleza, nuestra emergencia"));
+  }, /*#__PURE__*/React.createElement(MarcaNucleo, {
+    tagline: tagline
+  }));
 }
 
-/* Versión horizontal compacta para la barra de navegación. */
+/* Versión horizontal compacta para la barra — mismos colores fijos. */
 function LogoMarcaBarra() {
   return /*#__PURE__*/React.createElement("svg", {
-    viewBox: "0 0 250 40",
+    viewBox: "0 0 302 42",
     height: "34",
     "aria-label": "911 Urban Sal\xF3n",
     role: "img",
     style: {
       display: "block",
-      overflow: "visible"
+      overflow: "visible",
+      paintOrder: "stroke",
+      strokeLinejoin: "round"
     }
-  }, /*#__PURE__*/React.createElement("path", {
-    d: "M6 9 l5 -7 5 4 5 -6 5 6 5 -4 5 7 -15 3 z",
-    fill: "var(--blanco)",
-    opacity: ".9",
-    transform: "rotate(-4 21 6)"
-  }), /*#__PURE__*/React.createElement("text", {
-    x: "4",
+  }, /*#__PURE__*/React.createElement("text", {
+    x: "3",
     y: "33",
-    fill: "var(--naranja-500)",
+    fill: M.blanco,
+    stroke: M.tinta,
+    strokeWidth: "4",
     style: {
-      font: "400 30px var(--font-display)",
+      font: "400 32px " + M.anton,
       letterSpacing: "1px"
     },
-    transform: "rotate(-2 20 24)"
+    transform: "rotate(-2 30 24)"
   }, "911"), /*#__PURE__*/React.createElement("text", {
-    x: "66",
-    y: "33",
-    fill: "var(--blanco)",
+    x: "70",
+    y: "32",
+    fill: M.blanco,
+    stroke: M.tinta,
+    strokeWidth: "3.5",
     style: {
-      font: "400 24px var(--font-display)",
-      letterSpacing: "3px"
+      font: "27px " + M.marker
     }
   }, "URBAN"), /*#__PURE__*/React.createElement("text", {
-    x: "172",
-    y: "33",
-    fill: "var(--naranja-500)",
+    x: "196",
+    y: "32",
+    fill: M.rojo,
+    stroke: M.tinta,
+    strokeWidth: "3",
     style: {
-      font: "400 24px var(--font-display)",
-      letterSpacing: "3px"
+      font: "26px " + M.marker
     }
-  }, "SAL\xD6N"));
+  }, "SA"), /*#__PURE__*/React.createElement(PosteL, {
+    x: 234,
+    y: 9,
+    alto: 25,
+    ancho: 10
+  }), /*#__PURE__*/React.createElement("text", {
+    x: "248",
+    y: "32",
+    fill: M.azul,
+    stroke: M.tinta,
+    strokeWidth: "3",
+    style: {
+      font: "26px " + M.marker
+    }
+  }, "\xD6N"));
 }
 
 /* Barra de navegación propia (reemplaza la del bundle): el logo vectorial
@@ -4035,52 +4203,11 @@ function BannerMarca() {
     strokeWidth: "4",
     opacity: ".28",
     strokeLinecap: "round"
-  }), /*#__PURE__*/React.createElement("path", {
-    d: "M578 28 l7 -10 7 6 8 -9 8 9 7 -6 7 10 -22 4 z",
-    fill: "var(--blanco)",
-    opacity: ".92"
-  }), /*#__PURE__*/React.createElement("text", {
-    x: "600",
-    y: "92",
-    textAnchor: "middle",
-    fill: "var(--naranja-500)",
-    stroke: "var(--negro-950)",
-    strokeWidth: "1.2",
-    style: {
-      font: "400 58px var(--font-display)",
-      letterSpacing: "2px"
-    },
-    transform: "rotate(-2 600 70)"
-  }, "911"), /*#__PURE__*/React.createElement("text", {
-    x: "600",
-    y: "150",
-    textAnchor: "middle",
-    fill: "var(--blanco)",
-    style: {
-      font: "400 46px var(--font-display)",
-      letterSpacing: "12px"
-    }
-  }, "URBAN"), /*#__PURE__*/React.createElement("text", {
-    x: "600",
-    y: "192",
-    textAnchor: "middle",
-    fill: "var(--naranja-500)",
-    style: {
-      font: "400 27px var(--font-display)",
-      letterSpacing: "16px"
-    },
-    transform: "rotate(-1.5 600 184)"
-  }, "SAL\xD6N"), /*#__PURE__*/React.createElement("text", {
-    x: "600",
-    y: "216",
-    textAnchor: "middle",
-    fill: "var(--gris-200)",
-    style: {
-      font: "600 12px var(--font-condensed)",
-      letterSpacing: "4px",
-      textTransform: "uppercase"
-    }
-  }, "TU BELLEZA \xB7 NUESTRA EMERGENCIA")));
+  }), /*#__PURE__*/React.createElement("g", {
+    transform: "translate(438 12) scale(0.98)"
+  }, /*#__PURE__*/React.createElement(MarcaNucleo, {
+    tagline: true
+  }))));
 }
 
 /* Selector de estilo: 4 identidades de acento a gusto del visitante. La

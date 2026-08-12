@@ -705,37 +705,100 @@ Object.assign(window, { TurnosAsistente, Servicios, Cortes, Spa, ComoFunciona, R
 /* ══ Montaje (antes segundo <script> de la página) ══ */
 
 
-/* ── Logo vectorial de la marca ──
-   Tipográfico, con las variables del tema activo: el "911" y el "SALÖN" van
-   en el acento, así que combina solo con los 5 estilos (y con el serif del
-   Clásico, porque hereda --font-display). Reemplaza al viejo recorte de foto. */
-function LogoMarca({ alto = 96, tagline = false }) {
-  const alto2 = tagline ? 150 : 128;
+/* ── Logo vectorial de la marca — fiel al lockup original ──
+   El logo es IGUAL en todos los temas: colores y tipografías FIJOS como el
+   arte de referencia (911 y URBAN blancos delineados, SA rojo, ÖN azul con
+   el poste de barbero en la L, corona de trazo, marcador para el tagline).
+   Los temas cambian alrededor; la marca no. */
+const M = { blanco: "#F7F5F2", tinta: "#141417", rojo: "#D01F26", azul: "#2456D6",
+  teal: "#2BB3A3", naranja: "#F07A28",
+  anton: '"Anton",Impact,sans-serif', marker: '"Permanent Marker",cursive' };
+
+/* Poste de barbero que hace de "L": tubo blanco con franjas diagonales. */
+function PosteL({ x, y, alto = 34, ancho = 13 }) {
+  const id = "pole-" + x + "-" + y + "-" + alto;
   return (
-    <svg viewBox={"0 0 340 " + alto2} height={alto} aria-label="911 Urban Salón" role="img"
+    <g>
+      <clipPath id={id}><rect x={x} y={y} width={ancho} height={alto} rx={ancho / 2} /></clipPath>
+      <rect x={x} y={y} width={ancho} height={alto} rx={ancho / 2} fill={M.blanco} stroke={M.tinta} strokeWidth="2.5" />
+      <g clipPath={"url(#" + id + ")"}>
+        {[0, 1, 2, 3].map(i => (
+          <rect key={i} x={x - 8} y={y + 3 + i * (alto / 3.8)} width={ancho + 16} height={alto / 7.5}
+            fill={i % 2 ? M.azul : M.rojo} transform={"rotate(-24 " + (x + ancho / 2) + " " + (y + 5 + i * (alto / 3.8)) + ")"} />
+        ))}
+      </g>
+      <rect x={x} y={y} width={ancho} height={alto} rx={ancho / 2} fill="none" stroke={M.tinta} strokeWidth="2.5" />
+    </g>
+  );
+}
+
+/* El lockup completo en un espacio de 340×172 (216 con tagline). */
+function MarcaNucleo({ tagline = false }) {
+  return (
+    <g style={{ paintOrder: "stroke", strokeLinejoin: "round", strokeLinecap: "round" }}>
+      {/* salpicaduras del arte original */}
+      <circle cx="58" cy="52" r="4" fill={M.teal} opacity=".85" />
+      <circle cx="286" cy="40" r="4" fill={M.naranja} opacity=".85" />
+      <circle cx="34" cy="118" r="3" fill={M.rojo} opacity=".8" />
+      <circle cx="306" cy="132" r="4" fill={M.azul} opacity=".8" />
+      <circle cx="80" cy="160" r="3" fill={M.naranja} opacity=".7" />
+      <circle cx="262" cy="164" r="3" fill={M.teal} opacity=".7" />
+      {/* corona de trazo con puntas redondeadas, como el original */}
+      <g transform="rotate(-3 170 16)" stroke={M.blanco} strokeWidth="3.2" fill="none">
+        <path d="M152 30 L159 10 L167 22 L171 6 L175 22 L183 10 L190 30 Z" />
+        <circle cx="159" cy="8" r="2.2" fill={M.blanco} />
+        <circle cx="171" cy="4" r="2.2" fill={M.blanco} />
+        <circle cx="183" cy="8" r="2.2" fill={M.blanco} />
+      </g>
+      {/* 911 — blanco con delineado grueso, como el globo del original */}
+      <text x="170" y="88" textAnchor="middle" fill={M.blanco} stroke={M.tinta} strokeWidth="6"
+        style={{ font: "400 58px " + M.anton, letterSpacing: "3px" }} transform="rotate(-3 170 66)">911</text>
+      {/* URBAN — brochazo de marcador */}
+      <text x="170" y="134" textAnchor="middle" fill={M.blanco} stroke={M.tinta} strokeWidth="5"
+        style={{ font: "42px " + M.marker }} transform="rotate(-2 170 120)">URBAN</text>
+      {/* SALÖN — SA rojo · el poste hace de L · ÖN azul */}
+      <g transform="rotate(-2 170 156)">
+        <text x="157" y="166" textAnchor="end" fill={M.rojo} stroke={M.tinta} strokeWidth="4"
+          style={{ font: "32px " + M.marker }}>SA</text>
+        <PosteL x={162} y={134} />
+        <text x="181" y="166" fill={M.azul} stroke={M.tinta} strokeWidth="4"
+          style={{ font: "32px " + M.marker }}>ÖN</text>
+      </g>
+      {tagline && (
+        <g transform="rotate(-2 170 195)">
+          <text x="170" y="190" textAnchor="middle" fill={M.blanco} stroke={M.tinta} strokeWidth="3.2"
+            style={{ font: "16px " + M.marker }}>TU BELLEZA,</text>
+          <text x="170" y="211" textAnchor="middle" fill={M.blanco} stroke={M.tinta} strokeWidth="3.2"
+            style={{ font: "16px " + M.marker }}>NUESTRA EMERGENCIA</text>
+        </g>
+      )}
+    </g>
+  );
+}
+
+function LogoMarca({ alto = 96, tagline = false }) {
+  return (
+    <svg viewBox={"0 0 340 " + (tagline ? 218 : 172)} height={alto} aria-label="911 Urban Salón" role="img"
       style={{ display: "block", overflow: "visible" }}>
-      {/* corona del lockup original */}
-      <path d="M148 14 l7 -10 7 6 8 -9 8 9 7 -6 7 10 -22 4 z" fill="var(--blanco)" opacity=".92" transform="rotate(-4 170 10)" />
-      <text x="170" y="56" textAnchor="middle" fill="var(--naranja-500)" stroke="var(--negro-950)" strokeWidth="1"
-        style={{ font: "400 52px var(--font-display)", letterSpacing: "2px" }} transform="rotate(-2 170 40)">911</text>
-      <text x="170" y="97" textAnchor="middle" fill="var(--blanco)"
-        style={{ font: "400 36px var(--font-display)", letterSpacing: "8px" }}>URBAN</text>
-      <text x="170" y="124" textAnchor="middle" fill="var(--naranja-500)"
-        style={{ font: "400 21px var(--font-display)", letterSpacing: "12px" }} transform="rotate(-1.5 170 116)">SALÖN</text>
-      {tagline && <text x="170" y="146" textAnchor="middle" fill="var(--text-muted)"
-        style={{ font: "600 10.5px var(--font-condensed)", letterSpacing: "3px", textTransform: "uppercase" }}>Tu belleza, nuestra emergencia</text>}
+      <MarcaNucleo tagline={tagline} />
     </svg>
   );
 }
 
-/* Versión horizontal compacta para la barra de navegación. */
+/* Versión horizontal compacta para la barra — mismos colores fijos. */
 function LogoMarcaBarra() {
   return (
-    <svg viewBox="0 0 250 40" height="34" aria-label="911 Urban Salón" role="img" style={{ display: "block", overflow: "visible" }}>
-      <path d="M6 9 l5 -7 5 4 5 -6 5 6 5 -4 5 7 -15 3 z" fill="var(--blanco)" opacity=".9" transform="rotate(-4 21 6)" />
-      <text x="4" y="33" fill="var(--naranja-500)" style={{ font: "400 30px var(--font-display)", letterSpacing: "1px" }} transform="rotate(-2 20 24)">911</text>
-      <text x="66" y="33" fill="var(--blanco)" style={{ font: "400 24px var(--font-display)", letterSpacing: "3px" }}>URBAN</text>
-      <text x="172" y="33" fill="var(--naranja-500)" style={{ font: "400 24px var(--font-display)", letterSpacing: "3px" }}>SALÖN</text>
+    <svg viewBox="0 0 302 42" height="34" aria-label="911 Urban Salón" role="img"
+      style={{ display: "block", overflow: "visible", paintOrder: "stroke", strokeLinejoin: "round" }}>
+      <text x="3" y="33" fill={M.blanco} stroke={M.tinta} strokeWidth="4"
+        style={{ font: "400 32px " + M.anton, letterSpacing: "1px" }} transform="rotate(-2 30 24)">911</text>
+      <text x="70" y="32" fill={M.blanco} stroke={M.tinta} strokeWidth="3.5"
+        style={{ font: "27px " + M.marker }}>URBAN</text>
+      <text x="196" y="32" fill={M.rojo} stroke={M.tinta} strokeWidth="3"
+        style={{ font: "26px " + M.marker }}>SA</text>
+      <PosteL x={234} y={9} alto={25} ancho={10} />
+      <text x="248" y="32" fill={M.azul} stroke={M.tinta} strokeWidth="3"
+        style={{ font: "26px " + M.marker }}>ÖN</text>
     </svg>
   );
 }
@@ -796,16 +859,10 @@ function BannerMarca(){
         {/* salpicaduras y rayones */}
         {puntos.map(([x, y, r], i) => <circle key={i} cx={x} cy={y} r={r} fill={i % 2 ? "var(--naranja-400)" : "var(--azul-300)"} opacity=".55" />)}
         <path d="M1070 40 l60 90 M1100 30 l50 80 M60 190 l70 -90" stroke="var(--blanco)" strokeWidth="4" opacity=".28" strokeLinecap="round" />
-        {/* lockup centrado */}
-        <path d="M578 28 l7 -10 7 6 8 -9 8 9 7 -6 7 10 -22 4 z" fill="var(--blanco)" opacity=".92" />
-        <text x="600" y="92" textAnchor="middle" fill="var(--naranja-500)" stroke="var(--negro-950)" strokeWidth="1.2"
-          style={{ font: "400 58px var(--font-display)", letterSpacing: "2px" }} transform="rotate(-2 600 70)">911</text>
-        <text x="600" y="150" textAnchor="middle" fill="var(--blanco)"
-          style={{ font: "400 46px var(--font-display)", letterSpacing: "12px" }}>URBAN</text>
-        <text x="600" y="192" textAnchor="middle" fill="var(--naranja-500)"
-          style={{ font: "400 27px var(--font-display)", letterSpacing: "16px" }} transform="rotate(-1.5 600 184)">SALÖN</text>
-        <text x="600" y="216" textAnchor="middle" fill="var(--gris-200)"
-          style={{ font: "600 12px var(--font-condensed)", letterSpacing: "4px", textTransform: "uppercase" }}>TU BELLEZA · NUESTRA EMERGENCIA</text>
+        {/* lockup centrado — el mismo núcleo fiel del logo */}
+        <g transform="translate(438 12) scale(0.98)">
+          <MarcaNucleo tagline />
+        </g>
       </svg>
     </div>
   );

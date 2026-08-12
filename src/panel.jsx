@@ -28,15 +28,32 @@ const I = {
 };
 
 
-/* Logo vectorial del panel: mismo lockup que la landing, con los tokens de
-   este dashboard. Reemplaza al recorte de foto que se veía mal. */
+/* Logo vectorial del panel — el lockup fiel de la marca, colores fijos
+   (blanco delineado, SA rojo, ÖN azul): idéntico al de la página pública. */
 function LogoPanel({ alto = 84 }) {
   return (
-    <svg viewBox="0 0 200 76" height={alto} aria-label="911 Urban Salón" role="img" style={{ display: "block", overflow: "visible" }}>
-      <path d="M84 8 l4 -6 4 3 5 -5 5 5 4 -3 4 6 -13 2 z" fill="#FAFAFA" opacity=".9" transform="rotate(-4 100 5)" />
-      <text x="100" y="34" textAnchor="middle" fill="var(--brand)" style={{ font: "400 30px var(--disp)", letterSpacing: "1px" }} transform="rotate(-2 100 24)">911</text>
-      <text x="100" y="58" textAnchor="middle" fill="#FAFAFA" style={{ font: "400 20px var(--disp)", letterSpacing: "5px" }}>URBAN</text>
-      <text x="100" y="74" textAnchor="middle" fill="var(--brand)" style={{ font: "400 12px var(--disp)", letterSpacing: "7px" }}>SALÖN</text>
+    <svg viewBox="0 0 220 118" height={alto} aria-label="911 Urban Salón" role="img"
+      style={{ display: "block", overflow: "visible", paintOrder: "stroke", strokeLinejoin: "round", strokeLinecap: "round" }}>
+      <g transform="rotate(-3 110 10)" stroke="#F7F5F2" strokeWidth="2.4" fill="none">
+        <path d="M97 20 L102 6 L108 14 L110 3 L112 14 L118 6 L123 20 Z" />
+        <circle cx="102" cy="4.5" r="1.6" fill="#F7F5F2" />
+        <circle cx="110" cy="1.5" r="1.6" fill="#F7F5F2" />
+        <circle cx="118" cy="4.5" r="1.6" fill="#F7F5F2" />
+      </g>
+      <text x="110" y="58" textAnchor="middle" fill="#F7F5F2" stroke="#141417" strokeWidth="4.5"
+        style={{ font: '400 38px "Anton",Impact,sans-serif', letterSpacing: "2px" }} transform="rotate(-3 110 44)">911</text>
+      <text x="110" y="88" textAnchor="middle" fill="#F7F5F2" stroke="#141417" strokeWidth="3.5"
+        style={{ font: '27px "Permanent Marker",cursive' }} transform="rotate(-2 110 80)">URBAN</text>
+      <g transform="rotate(-2 110 104)">
+        <text x="101" y="112" textAnchor="end" fill="#D01F26" stroke="#141417" strokeWidth="3"
+          style={{ font: '21px "Permanent Marker",cursive' }}>SA</text>
+        <rect x="104" y="92" width="9" height="22" rx="4.5" fill="#F7F5F2" stroke="#141417" strokeWidth="1.8" />
+        <rect x="104" y="96" width="9" height="3.4" fill="#D01F26" transform="rotate(-24 108.5 98)" />
+        <rect x="104" y="102" width="9" height="3.4" fill="#2456D6" transform="rotate(-24 108.5 104)" />
+        <rect x="104" y="108" width="9" height="3.4" fill="#D01F26" transform="rotate(-24 108.5 110)" />
+        <text x="117" y="112" fill="#2456D6" stroke="#141417" strokeWidth="3"
+          style={{ font: '21px "Permanent Marker",cursive' }}>ÖN</text>
+      </g>
     </svg>
   );
 }
