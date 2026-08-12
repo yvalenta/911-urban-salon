@@ -394,7 +394,7 @@ function VistaCola({ T, P, user, nombreUser }) {
   const ops = { ...T, abrirReagendar: setReag, abrirEliminar: setBorra, abrirNoAtendido: setNoAt };
 
   return (
-    <React.Fragment>
+    <div className="cola">
       <div className="stats">
         <div className="stat"><span className="eyebrow">En espera</span><b>{espera}</b></div>
         <div className="stat naranja"><span className="eyebrow">En silla</span><b>{enSilla}</b></div>
@@ -459,7 +459,7 @@ function VistaCola({ T, P, user, nombreUser }) {
       {nuevo && <DialogoNuevo T={T} onCerrar={() => setNuevo(false)} />}
       {confirma && <DialogoConfirmar t={confirma} productos={P.activos} onOk={(m, items) => { T.confirmar(confirma, m, items, user, nombreUser); setConfirma(null); }} onNo={() => setConfirma(null)} />}
       {noAt && <DialogoNoAtendido t={noAt} onOk={m => { T.noAtendido(noAt, m); setNoAt(null); }} onNo={() => setNoAt(null)} />}
-    </React.Fragment>
+    </div>
   );
 }
 
@@ -986,7 +986,7 @@ function VistaAjustes({ C }) {
   );
 
   return (
-    <React.Fragment>
+    <div className="ajustes">
       <p className="tenue" style={{ margin: 0 }}>Todo lo que guardes aquí queda <b style={{ color: "var(--tx)" }}>publicado en la página pública</b> — los visitantes lo ven al entrar o recargar.</p>
       <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", alignItems: "start" }}>
 
@@ -1163,7 +1163,7 @@ function VistaAjustes({ C }) {
           </div>
         </div>
       )}
-    </React.Fragment>
+    </div>
   );
 }
 

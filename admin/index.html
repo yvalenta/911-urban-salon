@@ -123,15 +123,18 @@ tr.dim td{opacity:.45}
 @keyframes entra{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
 
 /* Sala */
-/* La sala (televisor del local), Mi día (el celular del barbero), el Resumen
-   (la caja del admin) y Productos (el catálogo) llevan el arte de marca de
-   fondo, tenue, con las tarjetas sólidas encima: los datos siguen mandando. */
-.sala,.mi-dia,.resumen,.productos{position:relative;min-height:calc(100vh - 150px)}
+/* Todas las vistas del panel llevan el arte de marca de fondo, tenue, con
+   las tarjetas sólidas encima: los datos siguen mandando. */
+.sala,.mi-dia,.resumen,.productos,.cola,.ajustes{position:relative;min-height:calc(100vh - 150px)}
 .sala{display:grid;gap:16px;align-content:start}
-.resumen,.productos{display:grid;gap:18px;align-content:start}
-.sala::before,.mi-dia::before,.resumen::before,.productos::before{content:"";position:absolute;inset:-22px -26px;background:url('/assets/banner2.jpeg') center/cover;
+.resumen,.productos,.cola,.ajustes{display:grid;gap:18px;align-content:start}
+.sala::before,.mi-dia::before,.resumen::before,.productos::before,.cola::before,.ajustes::before{
+  content:"";position:absolute;inset:-22px -26px;background:url('/assets/banner2.jpeg') center/cover;
   opacity:.14;border-radius:14px;pointer-events:none}
-.sala>*,.mi-dia>*,.resumen>*,.productos>*{position:relative}
+/* :not(.velo): los diálogos son overlay FIJO; sin la exclusión, esta regla
+   (posterior en el archivo y de igual especificidad) los volvería relative
+   y el velo quedaría incrustado en la vista en vez de cubrir la pantalla. */
+.sala>*:not(.velo),.mi-dia>*:not(.velo),.resumen>*:not(.velo),.productos>*:not(.velo),.cola>*:not(.velo),.ajustes>*:not(.velo){position:relative}
 .sillas{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
 .silla-card{background:var(--card);border:1px solid rgba(240,122,40,.35);border-radius:var(--r);padding:24px;display:grid;justify-items:center;gap:8px;position:relative;overflow:hidden}
 .silla-card::before{content:"";position:absolute;inset:0;background:radial-gradient(420px 200px at 50% 0%,var(--brand-soft),transparent 70%)}
@@ -1022,7 +1025,9 @@ function VistaCola({
     abrirEliminar: setBorra,
     abrirNoAtendido: setNoAt
   };
-  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "cola"
+  }, /*#__PURE__*/React.createElement("div", {
     className: "stats"
   }, /*#__PURE__*/React.createElement("div", {
     className: "stat"
@@ -2524,7 +2529,9 @@ function VistaAjustes({
       [campo]: props && props.type === "number" ? e.target.value === "" ? "" : parseInt(e.target.value, 10) : e.target.value
     })
   }, props || {})));
-  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "ajustes"
+  }, /*#__PURE__*/React.createElement("p", {
     className: "tenue",
     style: {
       margin: 0
