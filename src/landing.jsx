@@ -582,7 +582,9 @@ function Footer() {
     <footer style={{ borderTop: "1px solid var(--border-hair)", background: "var(--negro-950)", paddingBlock: "var(--sp-12)" }}>
       <div className="u-container" style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr", gap: "var(--sp-10)" }}>
         <div style={{ display: "grid", gap: "var(--sp-4)", justifyItems: "start" }}>
-          <img src={(D.imagenes || {}).logo || "assets/logo-911-urban-salon-dark.png"} alt="911 Urban Salón" style={{ height: 110 }} />
+          {(D.imagenes || {}).logo
+            ? <img src={D.imagenes.logo} alt="911 Urban Salón" style={{ height: 110 }} />
+            : <LogoMarca alto={110} tagline />}
           <span style={{ fontFamily: "var(--font-tag)", color: "var(--naranja-500)", transform: "rotate(-2deg)", display: "inline-block" }}>Tu belleza, nuestra emergencia</span>
         </div>
         <div style={{ display: "grid", gap: "var(--sp-3)", alignContent: "start" }}>
@@ -700,15 +702,103 @@ Object.assign(window, { TurnosAsistente, Servicios, Cortes, Spa, ComoFunciona, R
 /* ══ Montaje (antes segundo <script> de la página) ══ */
 
 
-/* Banda de marca: el banner graffiti a lo ancho, entre el hero y la carta.
-   La imagen es administrable (Ajustes → Imágenes de marca); sin subir nada,
-   va el asset del repo. */
+/* ── Logo vectorial de la marca ──
+   Tipográfico, con las variables del tema activo: el "911" y el "SALÖN" van
+   en el acento, así que combina solo con los 5 estilos (y con el serif del
+   Clásico, porque hereda --font-display). Reemplaza al viejo recorte de foto. */
+function LogoMarca({ alto = 96, tagline = false }) {
+  const alto2 = tagline ? 150 : 128;
+  return (
+    <svg viewBox={"0 0 340 " + alto2} height={alto} aria-label="911 Urban Salón" role="img"
+      style={{ display: "block", overflow: "visible" }}>
+      {/* corona del lockup original */}
+      <path d="M148 14 l7 -10 7 6 8 -9 8 9 7 -6 7 10 -22 4 z" fill="var(--blanco)" opacity=".92" transform="rotate(-4 170 10)" />
+      <text x="170" y="56" textAnchor="middle" fill="var(--naranja-500)" stroke="var(--negro-950)" strokeWidth="1"
+        style={{ font: "400 52px var(--font-display)", letterSpacing: "2px" }} transform="rotate(-2 170 40)">911</text>
+      <text x="170" y="97" textAnchor="middle" fill="var(--blanco)"
+        style={{ font: "400 36px var(--font-display)", letterSpacing: "8px" }}>URBAN</text>
+      <text x="170" y="124" textAnchor="middle" fill="var(--naranja-500)"
+        style={{ font: "400 21px var(--font-display)", letterSpacing: "12px" }} transform="rotate(-1.5 170 116)">SALÖN</text>
+      {tagline && <text x="170" y="146" textAnchor="middle" fill="var(--text-muted)"
+        style={{ font: "600 10.5px var(--font-condensed)", letterSpacing: "3px", textTransform: "uppercase" }}>Tu belleza, nuestra emergencia</text>}
+    </svg>
+  );
+}
+
+/* Versión horizontal compacta para la barra de navegación. */
+function LogoMarcaBarra() {
+  return (
+    <svg viewBox="0 0 250 40" height="34" aria-label="911 Urban Salón" role="img" style={{ display: "block", overflow: "visible" }}>
+      <path d="M6 9 l5 -7 5 4 5 -6 5 6 5 -4 5 7 -15 3 z" fill="var(--blanco)" opacity=".9" transform="rotate(-4 21 6)" />
+      <text x="4" y="33" fill="var(--naranja-500)" style={{ font: "400 30px var(--font-display)", letterSpacing: "1px" }} transform="rotate(-2 20 24)">911</text>
+      <text x="66" y="33" fill="var(--blanco)" style={{ font: "400 24px var(--font-display)", letterSpacing: "3px" }}>URBAN</text>
+      <text x="172" y="33" fill="var(--naranja-500)" style={{ font: "400 24px var(--font-display)", letterSpacing: "3px" }}>SALÖN</text>
+    </svg>
+  );
+}
+
+/* Barra de navegación propia (reemplaza la del bundle): el logo vectorial
+   en vez de la foto recortada, mismos anclajes y CTA. */
+function NavBar({ onCta }) {
+  const { Button, Icon } = window.Ds911UrbanSalNDesignSystem_1e06a9;
+  return (
+    <header style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(5,5,6,.82)", backdropFilter: "blur(10px)",
+      borderBottom: "1px solid var(--border-hair)" }}>
+      <div className="u-container" style={{ display: "flex", alignItems: "center", gap: "var(--sp-6)", minHeight: 64 }}>
+        <a href="#top" aria-label="Inicio"><LogoMarcaBarra /></a>
+        <nav style={{ display: "flex", gap: "var(--sp-5)", marginLeft: "auto" }}>
+          {[["#cortes", "Cortes"], ["#spa", "Spa"], ["#turnos", "Turnos"], ["#equipo", "Equipo"], ["#horarios", "Horarios"]].map(([href, t]) => (
+            <a key={href} href={href} style={{ font: "600 var(--fs-2xs)/1 var(--font-condensed)", textTransform: "uppercase",
+              letterSpacing: "var(--ls-wider)", color: "var(--text-muted)" }}>{t}</a>
+          ))}
+        </nav>
+        <Button size="sm" onClick={onCta} iconLeft={<Icon name="calendar-clock" size={15} />}
+          style={{ marginLeft: "var(--sp-2)" }}>Pedir turno</Button>
+      </div>
+    </header>
+  );
+}
+
+/* Banda de marca vectorial: las diagonales naranja/azul y las salpicaduras
+   del arte original, en plano — nunca se recorta feo, pesa nada y se tiñe
+   con el tema. Si en Ajustes se sube un banner propio, ese manda. */
 function BannerMarca(){
   const im = (window.DATA_911.imagenes || {});
+  if (im.banner) {
+    return (
+      <div aria-hidden="true" style={{borderBlock:"1px solid var(--border-hair)",background:"var(--negro-950)"}}>
+        <img src={im.banner} alt="" loading="lazy"
+          style={{display:"block",width:"100%",height:"clamp(140px, 22vw, 300px)",objectFit:"cover"}}/>
+      </div>
+    );
+  }
+  const puntos = [[70,40,5],[130,190,4],[300,60,6],[420,205,5],[560,35,4],[905,200,5],[1010,50,6],[1105,180,4],[220,120,3],[990,130,3]];
   return (
     <div aria-hidden="true" style={{borderBlock:"1px solid var(--border-hair)",background:"var(--negro-950)"}}>
-      <img src={im.banner || "assets/banner.jpeg"} alt="" loading="lazy"
-        style={{display:"block",width:"100%",height:"clamp(140px, 22vw, 300px)",objectFit:"cover"}}/>
+      <svg viewBox="0 0 1200 240" preserveAspectRatio="xMidYMid slice"
+        style={{ display: "block", width: "100%", height: "clamp(140px, 20vw, 280px)" }}>
+        <rect width="1200" height="240" fill="var(--negro-950)" />
+        {/* brochazos diagonales, como el arte de muestra */}
+        <polygon points="0,240 170,0 330,0 90,240" fill="var(--naranja-600)" opacity=".85" />
+        <polygon points="60,240 250,0 300,0 120,240" fill="var(--azul-500)" opacity=".8" />
+        <polygon points="1200,0 1030,240 880,240 1110,0" fill="var(--azul-600)" opacity=".8" />
+        <polygon points="1160,0 990,240 940,240 1105,0" fill="var(--naranja-500)" opacity=".75" />
+        <polygon points="330,240 420,120 450,150 380,240" fill="var(--naranja-500)" opacity=".25" />
+        <polygon points="800,0 760,70 730,40 770,0" fill="var(--azul-400)" opacity=".3" />
+        {/* salpicaduras y rayones */}
+        {puntos.map(([x, y, r], i) => <circle key={i} cx={x} cy={y} r={r} fill={i % 2 ? "var(--naranja-400)" : "var(--azul-300)"} opacity=".55" />)}
+        <path d="M1070 40 l60 90 M1100 30 l50 80 M60 190 l70 -90" stroke="var(--blanco)" strokeWidth="4" opacity=".28" strokeLinecap="round" />
+        {/* lockup centrado */}
+        <path d="M578 28 l7 -10 7 6 8 -9 8 9 7 -6 7 10 -22 4 z" fill="var(--blanco)" opacity=".92" />
+        <text x="600" y="92" textAnchor="middle" fill="var(--naranja-500)" stroke="var(--negro-950)" strokeWidth="1.2"
+          style={{ font: "400 58px var(--font-display)", letterSpacing: "2px" }} transform="rotate(-2 600 70)">911</text>
+        <text x="600" y="150" textAnchor="middle" fill="var(--blanco)"
+          style={{ font: "400 46px var(--font-display)", letterSpacing: "12px" }}>URBAN</text>
+        <text x="600" y="192" textAnchor="middle" fill="var(--naranja-500)"
+          style={{ font: "400 27px var(--font-display)", letterSpacing: "16px" }} transform="rotate(-1.5 600 184)">SALÖN</text>
+        <text x="600" y="216" textAnchor="middle" fill="var(--gris-200)"
+          style={{ font: "600 12px var(--font-condensed)", letterSpacing: "4px", textTransform: "uppercase" }}>TU BELLEZA · NUESTRA EMERGENCIA</text>
+      </svg>
     </div>
   );
 }

@@ -27,6 +27,20 @@ const I = {
   caja: "M3 9l2-5h14l2 5M3 9h18v11H3zM10 13h4", carrito: "M6 6h15l-1.5 8H8L6 6zM6 6L5 3H2M9 20a1 1 0 100-2 1 1 0 000 2zM18 20a1 1 0 100-2 1 1 0 000 2z", ajustes: "M12 15a3 3 0 100-6 3 3 0 000 6M19 12a7 7 0 01-.1 1.2l2 1.6-2 3.4-2.4-1a7 7 0 01-2 1.2L14 21h-4l-.4-2.6a7 7 0 01-2-1.2l-2.4 1-2-3.4 2-1.6A7 7 0 015 12a7 7 0 01.1-1.2l-2-1.6 2-3.4 2.4 1a7 7 0 012-1.2L10 3h4l.4 2.6a7 7 0 012 1.2l2.4-1 2 3.4-2 1.6c.1.4.2.8.2 1.2z"
 };
 
+
+/* Logo vectorial del panel: mismo lockup que la landing, con los tokens de
+   este dashboard. Reemplaza al recorte de foto que se veía mal. */
+function LogoPanel({ alto = 84 }) {
+  return (
+    <svg viewBox="0 0 200 76" height={alto} aria-label="911 Urban Salón" role="img" style={{ display: "block", overflow: "visible" }}>
+      <path d="M84 8 l4 -6 4 3 5 -5 5 5 4 -3 4 6 -13 2 z" fill="#FAFAFA" opacity=".9" transform="rotate(-4 100 5)" />
+      <text x="100" y="34" textAnchor="middle" fill="var(--brand)" style={{ font: "400 30px var(--disp)", letterSpacing: "1px" }} transform="rotate(-2 100 24)">911</text>
+      <text x="100" y="58" textAnchor="middle" fill="#FAFAFA" style={{ font: "400 20px var(--disp)", letterSpacing: "5px" }}>URBAN</text>
+      <text x="100" y="74" textAnchor="middle" fill="var(--brand)" style={{ font: "400 12px var(--disp)", letterSpacing: "7px" }}>SALÖN</text>
+    </svg>
+  );
+}
+
 /* ── Toasts ── */
 function useToasts() {
   const [lista, setLista] = React.useState([]);
@@ -1005,13 +1019,15 @@ function VistaAjustes({ C }) {
           <h3 style={{ font: "700 15px var(--cond)", textTransform: "uppercase", letterSpacing: ".05em" }}>Imágenes de marca</h3>
           <span className="tenue">El banner a lo ancho y el logo del pie de página. Subir reemplaza; "Original" vuelve al arte del sitio. Las fotos de los cortes se cambian abajo, en la carta.</span>
           <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
-            {[["banner", "Banner de marca", "/assets/banner.jpeg", { width: "100%", height: 74, objectFit: "cover" }],
-              ["logo", "Logo del pie", "/assets/logo-911-urban-salon-dark.png", { height: 74, objectFit: "contain" }]].map(([clave, titulo, porDefecto, estilo]) => {
+            {[["banner", "Banner de marca", { width: "100%", height: 74, objectFit: "cover" }],
+              ["logo", "Logo del pie", { height: 74, objectFit: "contain" }]].map(([clave, titulo, estilo]) => {
               const subida = (n.imagenes || {})[clave];
               return (
                 <div key={clave} style={{ display: "grid", gap: 8 }}>
-                  <span className="eyebrow">{titulo}{subida ? " · personalizada" : " · original"}</span>
-                  <img src={subida || porDefecto} alt="" style={{ ...estilo, borderRadius: 8, border: "1px solid var(--line)", background: "var(--panel)", justifySelf: "start" }} />
+                  <span className="eyebrow">{titulo}{subida ? " · personalizada" : " · vectorial del sitio"}</span>
+                  {subida
+                    ? <img src={subida} alt="" style={{ ...estilo, borderRadius: 8, border: "1px solid var(--line)", background: "var(--panel)", justifySelf: "start" }} />
+                    : <div className="tenue" style={{ ...estilo, width: "100%", display: "grid", placeItems: "center", borderRadius: 8, border: "1px dashed var(--line-2)", fontSize: 12 }}>Arte vectorial — se adapta al tema elegido</div>}
                   <div style={{ display: "flex", gap: 6 }}>
                     <label className="btn ghost sm" style={{ cursor: "pointer" }}>
                       <Ic d={I.foto} s={13} />Subir nueva
@@ -1168,7 +1184,7 @@ function Login({ onOk, avisar }) {
   return (
     <div className="login">
       <form className="card" onSubmit={entrar}>
-        <img src="/assets/logo-911-urban-salon-dark.png" alt="911 Urban Salón" />
+        <LogoPanel alto={92} />
         <div style={{ display: "grid", gap: 4, justifyItems: "center" }}>
           <span className="eyebrow" style={{ color: "var(--brand)" }}>Panel del salón</span>
           <h2 style={{ font: "400 24px/1 var(--disp)", textTransform: "uppercase" }}>Solo el equipo</h2>
@@ -1204,7 +1220,7 @@ function Shell({ sesion, salir }) {
     <div className="shell">
       <aside className="side">
         <div className="marca">
-          <img src="/assets/logo-911-urban-salon-dark.png" alt="" />
+          <LogoPanel alto={44} />
           <div style={{ display: "grid" }}>
             <b style={{ font: "700 13px var(--cond)", textTransform: "uppercase", letterSpacing: ".06em", color: "var(--tx)" }}>911 Urban</b>
             <span className="eyebrow">Turnos</span>
