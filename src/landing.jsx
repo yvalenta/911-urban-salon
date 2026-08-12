@@ -277,6 +277,9 @@ function TurnosAsistente({ servicioInicial }) {
 
   return (
     <section id="turnos" style={{ paddingBlock: "var(--section-y)", position: "relative", overflow: "hidden" }}>
+      {/* El arte de marca detrás del asistente, tenue como en la sala del
+         panel: las tarjetas sólidas del wizard y la cola mandan encima. */}
+      <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: "url(assets/banner2.jpeg) center/cover", opacity: .12 }} />
       <div style={{ position: "absolute", inset: 0, background: "radial-gradient(900px 420px at 78% 12%, rgba(15,107,180,.20), transparent 68%)" }} />
       <div className="u-container" style={{ position: "relative", display: "grid", gap: "var(--sp-10)" }}>
         <SectionHeading kicker="Asignación automática de turnos" title="Pide tu turno en 30 segundos" description="Combina los servicios que quieras — solo un corte por turno — y el sistema te da el hueco más cercano." align="center" />
