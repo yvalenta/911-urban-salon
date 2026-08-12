@@ -784,7 +784,7 @@ function VistaResumen({ T, V }) {
   const top = Object.entries(porPersona).sort((a, b) => b[1].cop - a[1].cop);
   const topeTop = Math.max(1, ...top.map(([, p]) => p.cop));
   return (
-    <React.Fragment>
+    <div className="resumen">
       <div className="stats" style={{ gridTemplateColumns: "repeat(4,1fr)" }}>
         <div className="stat"><span className="eyebrow">Atendidos</span><b>{atendidos.length}</b></div>
         <div className="stat"><span className="eyebrow">No atendidos</span><b>{noAtendidos.length}</b></div>
@@ -887,7 +887,7 @@ function VistaResumen({ T, V }) {
         ))}
         {!atendidos.length && <span className="tenue">Aún no hay atenciones confirmadas hoy.</span>}
       </div>
-    </React.Fragment>
+    </div>
   );
 }
 
