@@ -896,7 +896,7 @@ function VistaProductos({ P }) {
   const [form, setForm] = React.useState(null); // {id?, nombre, precio}
   const [borrar, setBorrar] = React.useState(null);
   return (
-    <React.Fragment>
+    <div className="productos">
       <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
         <button className="btn primary" onClick={() => setForm({ nombre: "", precio: "" })}><Ic d={I.mas} s={14} />Nuevo producto</button>
         <span className="tenue">Gel, cera y lo que quieras comercializar. Los inactivos no aparecen al vender.</span>
@@ -954,7 +954,7 @@ function VistaProductos({ P }) {
           </div>
         </div>
       )}
-    </React.Fragment>
+    </div>
   );
 }
 

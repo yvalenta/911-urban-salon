@@ -123,15 +123,15 @@ tr.dim td{opacity:.45}
 @keyframes entra{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
 
 /* Sala */
-/* La sala (televisor del local), Mi día (el celular del barbero) y el
-   Resumen (la caja del admin) llevan el arte de marca de fondo, tenue, con
-   las tarjetas sólidas encima para que los números sigan mandando. */
-.sala,.mi-dia,.resumen{position:relative;min-height:calc(100vh - 150px)}
+/* La sala (televisor del local), Mi día (el celular del barbero), el Resumen
+   (la caja del admin) y Productos (el catálogo) llevan el arte de marca de
+   fondo, tenue, con las tarjetas sólidas encima: los datos siguen mandando. */
+.sala,.mi-dia,.resumen,.productos{position:relative;min-height:calc(100vh - 150px)}
 .sala{display:grid;gap:16px;align-content:start}
-.resumen{display:grid;gap:18px;align-content:start}
-.sala::before,.mi-dia::before,.resumen::before{content:"";position:absolute;inset:-22px -26px;background:url('/assets/banner2.jpeg') center/cover;
+.resumen,.productos{display:grid;gap:18px;align-content:start}
+.sala::before,.mi-dia::before,.resumen::before,.productos::before{content:"";position:absolute;inset:-22px -26px;background:url('/assets/banner2.jpeg') center/cover;
   opacity:.14;border-radius:14px;pointer-events:none}
-.sala>*,.mi-dia>*,.resumen>*{position:relative}
+.sala>*,.mi-dia>*,.resumen>*,.productos>*{position:relative}
 .sillas{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
 .silla-card{background:var(--card);border:1px solid rgba(240,122,40,.35);border-radius:var(--r);padding:24px;display:grid;justify-items:center;gap:8px;position:relative;overflow:hidden}
 .silla-card::before{content:"";position:absolute;inset:0;background:radial-gradient(420px 200px at 50% 0%,var(--brand-soft),transparent 70%)}
@@ -2312,7 +2312,9 @@ function VistaProductos({
 }) {
   const [form, setForm] = React.useState(null); // {id?, nombre, precio}
   const [borrar, setBorrar] = React.useState(null);
-  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "productos"
+  }, /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 10,
