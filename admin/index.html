@@ -131,6 +131,9 @@ tr.dim td{opacity:.45}
 .sala::before,.mi-dia::before,.resumen::before,.productos::before,.cola::before,.ajustes::before{
   content:"";position:absolute;inset:-22px -26px;background:url('/assets/banner2.jpeg') center/cover;
   opacity:.14;border-radius:14px;pointer-events:none}
+/* Ajustes es la vista más tapada por tarjetas: el arte va más presente para
+   que se note en márgenes y entrecalles. */
+.ajustes::before{opacity:.24}
 /* :not(.velo): los diálogos son overlay FIJO; sin la exclusión, esta regla
    (posterior en el archivo y de igual especificidad) los volvería relative
    y el velo quedaría incrustado en la vista en vez de cubrir la pantalla. */
