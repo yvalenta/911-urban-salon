@@ -16,6 +16,11 @@
 # a mano: ops/respaldo.sh
 set -euo pipefail
 
+# launchd NO hereda el PATH del shell: sin esta línea, psql no existe y el
+# respaldo "corre" dejando el directorio vacío (pasó del 10 al 30 de ago-2026:
+# 17 respaldos sin un solo CSV; solo la fila de control los delataba).
+export PATH="/opt/homebrew/bin:$PATH"
+
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 DESTINO_BASE="$HOME/Respaldos/911urban"
 DESTINO="$DESTINO_BASE/$(date +%F_%H%M)"
