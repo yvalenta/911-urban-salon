@@ -1,0 +1,192 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>¿Quiénes somos? — 911 Urban Salón</title>
+<meta name="description" content="911 S.A.S. Urban Salón: barbería, spa y cultura urbana en un mismo espacio. Nuestra historia, misión, visión y valores.">
+<meta property="og:title" content="¿Quiénes somos? — 911 Urban Salón">
+<meta property="og:description" content="Barbería, spa y arte urbano en El Poblado, Medellín. Donde el arte urbano, tu estilo y tu bienestar se encuentran.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://911-urban-salon.ynt.codes/nosotros/">
+<meta property="og:image" content="https://911-urban-salon.ynt.codes/assets/banner2.jpeg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0A0A0B">
+<!-- Mismos tokens y utilidades que la landing: un solo archivo para las dos páginas. -->
+<link rel="stylesheet" href="../assets/base.css">
+<script>
+/* El tema elegido en la landing se respeta aquí (y trae su fuente), ANTES de pintar. */
+try {
+  var tema = localStorage.getItem("tema911") || "";
+  document.documentElement.dataset.tema = tema;
+  var fuentes = { azul: "Archivo+Black", platino: "Oswald:wght@500", clasico: "Playfair+Display:ital,wght@0,500;0,600;1,500" };
+  if (fuentes[tema]) document.write('<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=' + fuentes[tema] + '&display=swap">');
+} catch (e) {}
+</script>
+<style>
+.barra{position:sticky;top:0;z-index:50;background:rgba(5,5,6,.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--border-hair)}
+.barra .u-container{display:flex;align-items:center;gap:var(--sp-6);min-height:64px}
+.barra nav{display:flex;gap:var(--sp-5);margin-left:auto}
+.barra nav a{font:600 var(--fs-2xs)/1 var(--font-condensed);text-transform:uppercase;letter-spacing:var(--ls-wider);color:var(--text-muted)}
+.barra nav a[aria-current]{color:var(--naranja-500)}
+.btn{display:inline-flex;align-items:center;gap:8px;height:var(--control-h-sm);padding:0 16px;margin-left:var(--sp-2);font:600 var(--fs-2xs)/1 var(--font-condensed);text-transform:uppercase;letter-spacing:var(--ls-wider);border-radius:var(--radius-sm);background:var(--action-primary);color:var(--text-on-accent);border:1px solid var(--action-primary);white-space:nowrap;transition:background var(--dur-fast) var(--ease-out),box-shadow var(--dur-fast) var(--ease-out)}
+.btn:hover{background:var(--action-primary-hover);border-color:var(--action-primary-hover);box-shadow:var(--glow-naranja);color:var(--text-on-accent)}
+
+.encabezado{display:grid;gap:var(--sp-3);justify-items:start}
+.encabezado h1{font:400 var(--fs-5xl)/var(--lh-tight) var(--font-display)}
+.encabezado h2{font:400 var(--fs-4xl)/var(--lh-tight) var(--font-display)}
+
+.portada{position:relative;overflow:hidden;padding-block:var(--section-y);border-bottom:1px solid var(--border-hair)}
+.portada .u-container{position:relative;z-index:1;display:grid;gap:var(--sp-8)}
+.prosa{max-width:var(--container-narrow);display:grid;gap:var(--sp-4)}
+.prosa p{margin:0;color:var(--text-body)}
+.prosa .destacado{font:var(--fw-medium) var(--fs-xl)/var(--lh-normal) var(--font-body);color:var(--text-strong)}
+
+.seccion{padding-block:var(--section-y)}
+.seccion.oscura{background:var(--negro-950);border-block:1px solid var(--border-hair)}
+.dos{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-8)}
+.tarjeta{background:var(--surface-card);border:1px solid var(--border-hair);border-radius:var(--radius-md);padding:var(--card-pad-lg);box-shadow:var(--shadow-inset);display:grid;gap:var(--sp-4);align-content:start}
+.tarjeta .u-kicker{display:block}
+.tarjeta h3{font:400 var(--fs-3xl)/var(--lh-tight) var(--font-display);letter-spacing:0}
+.tarjeta p{margin:0;color:var(--text-muted)}
+
+.valores{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-4);margin-top:var(--sp-10)}
+.valor{background:var(--surface-card);border:1px solid var(--border-hair);border-radius:var(--radius-md);padding:var(--card-pad);display:grid;gap:var(--sp-3);align-content:start}
+.valor .num{width:44px;height:44px;display:grid;place-items:center;border-radius:var(--radius-sm);background:var(--surface-accent-soft);color:var(--naranja-500);font:400 var(--fs-xl)/1 var(--font-display)}
+.valor h3{font:700 var(--fs-lg)/1.1 var(--font-condensed);letter-spacing:var(--ls-wide)}
+.valor p{margin:0;font:var(--type-small);color:var(--text-muted)}
+
+.cierre{text-align:center;display:grid;gap:var(--sp-6);justify-items:center}
+.cierre .u-tag{font-size:var(--fs-2xl);max-width:20ch;line-height:1.3}
+
+.pie{border-top:1px solid var(--border-hair);background:var(--negro-950);padding-block:var(--sp-12)}
+.pie .marca{display:grid;gap:var(--sp-4);justify-items:start}
+.pie .linea{margin-top:var(--sp-8);padding-top:var(--sp-5);border-top:1px solid var(--border-hair);font:var(--fw-regular) var(--fs-2xs)/1.5 var(--font-body);color:var(--text-faint);display:flex;justify-content:space-between;gap:var(--sp-4);flex-wrap:wrap}
+
+@media (max-width:960px){ .valores{grid-template-columns:repeat(2,1fr)} }
+@media (max-width:640px){
+  .dos,.valores{grid-template-columns:1fr}
+  .barra .u-container{flex-wrap:wrap;gap:var(--sp-3)}
+  .barra nav{display:none}
+}
+</style>
+</head><body>
+
+<header class="barra">
+  <div class="u-container">
+    <a href="../" aria-label="Inicio">
+      <svg viewBox="0 0 302 42" height="34" aria-label="911 Urban Salón" role="img" style="display:block;overflow:visible;paint-order:stroke;stroke-linejoin:round">
+        <text x="3" y="33" fill="#F7F5F2" stroke="#141417" stroke-width="4" style="font:400 32px 'Anton',Impact,sans-serif;letter-spacing:1px" transform="rotate(-2 30 24)">911</text>
+        <text x="70" y="32" fill="#F7F5F2" stroke="#141417" stroke-width="3.5" style="font:27px 'Permanent Marker',cursive">URBAN</text>
+        <text x="196" y="32" fill="#D01F26" stroke="#141417" stroke-width="3" style="font:26px 'Permanent Marker',cursive">SA</text>
+        <g>
+          <clipPath id="pole-234-9-25"><rect x="234" y="9" width="10" height="25" rx="5"/></clipPath>
+          <rect x="234" y="9" width="10" height="25" rx="5" fill="#F7F5F2" stroke="#141417" stroke-width="2.5"/>
+          <g clip-path="url(#pole-234-9-25)">
+            <rect x="226" y="12" width="26" height="3.33" fill="#D01F26" transform="rotate(-24 239 14)"/>
+            <rect x="226" y="18.58" width="26" height="3.33" fill="#2456D6" transform="rotate(-24 239 20.58)"/>
+            <rect x="226" y="25.16" width="26" height="3.33" fill="#D01F26" transform="rotate(-24 239 27.16)"/>
+            <rect x="226" y="31.74" width="26" height="3.33" fill="#2456D6" transform="rotate(-24 239 33.74)"/>
+          </g>
+          <rect x="234" y="9" width="10" height="25" rx="5" fill="none" stroke="#141417" stroke-width="2.5"/>
+        </g>
+        <text x="248" y="32" fill="#2456D6" stroke="#141417" stroke-width="3" style="font:26px 'Permanent Marker',cursive">ÖN</text>
+      </svg>
+    </a>
+    <nav>
+      <a href="../#cortes">Cortes</a>
+      <a href="../#spa">Spa</a>
+      <a href="../#turnos">Turnos</a>
+      <a href="../#equipo">Equipo</a>
+      <a href="../#horarios">Horarios</a>
+      <a href="./" aria-current="page">Nosotros</a>
+    </nav>
+    <a class="btn" href="../#turnos">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h5"/><path d="M17.5 17.5 16 16.3V14"/><circle cx="16" cy="16" r="6"/></svg>
+      Pedir turno
+    </a>
+  </div>
+</header>
+
+<main>
+  <section class="portada u-wall">
+    <div class="u-wall-dim" style="position:absolute;inset:0"></div>
+    <div class="u-container">
+      <div class="encabezado">
+        <span class="u-kicker">911 S.A.S. Urban Salón</span>
+        <h1>¿Quiénes somos?</h1>
+        <hr class="u-rule">
+      </div>
+      <div class="prosa">
+        <p class="destacado">Somos 911 S.A.S. Urban Salón, una empresa dedicada al cuidado personal, la barbería y los servicios de spa, creada con el propósito de brindar a nuestros clientes una experiencia integral de belleza, bienestar y relajación.</p>
+        <p>Nos inspiramos en la cultura urbana, el arte callejero y la creatividad del graffiti, elementos que representan la expresión, la libertad y la autenticidad. Nuestra identidad combina el estilo de la calle con las tendencias actuales de la barbería y el bienestar, creando un espacio moderno en el que el arte, la personalidad y el cuidado personal se unen para ofrecer una experiencia diferente.</p>
+        <p>Contamos con servicios de barbería enfocados en el cuidado del cabello y la barba, así como servicios de spa diseñados para proporcionar relajación, cuidado personal y bienestar. Nuestro objetivo es satisfacer las necesidades de cada cliente mediante un servicio profesional, un ambiente agradable y una atención personalizada.</p>
+        <p>En 911 S.A.S. Urban Salón, creemos que el estilo es una forma de expresión. Por eso, integramos la esencia del graffiti y la cultura urbana en nuestra identidad, convirtiendo nuestro espacio en un lugar donde cada detalle transmite creatividad, carácter y originalidad. Queremos que nuestros clientes no solo reciban un servicio, sino que también vivan una experiencia que refleje su personalidad y les permita sentirse cómodos, seguros y auténticos.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="seccion oscura">
+    <div class="u-container dos">
+      <article class="tarjeta">
+        <span class="u-kicker">Nuestra misión</span>
+        <h3>A qué venimos</h3>
+        <p>Brindar servicios de barbería y spa de alta calidad, combinando el cuidado personal con la esencia de la cultura urbana y el arte del graffiti, para ofrecer experiencias innovadoras que promuevan el bienestar, la confianza y la expresión individual de nuestros clientes.</p>
+      </article>
+      <article class="tarjeta">
+        <span class="u-kicker">Nuestra visión</span>
+        <h3>A dónde vamos</h3>
+        <p>Ser una empresa reconocida en el sector de la belleza y el cuidado personal por nuestra calidad, innovación y originalidad, destacándonos por integrar la barbería, el spa y el arte urbano en un concepto moderno que inspire creatividad y marque la diferencia en el mercado.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="seccion">
+    <div class="u-container">
+      <div class="encabezado">
+        <span class="u-kicker">Lo que nos mueve</span>
+        <h2>Nuestros valores</h2>
+        <hr class="u-rule">
+      </div>
+      <div class="valores">
+        <article class="valor"><span class="num">01</span><h3>Creatividad</h3><p>Nos inspiramos en el arte urbano y el graffiti para expresar nuestra identidad y originalidad.</p></article>
+        <article class="valor"><span class="num">02</span><h3>Calidad</h3><p>Ofrecemos servicios enfocados en satisfacer las expectativas de nuestros clientes.</p></article>
+        <article class="valor"><span class="num">03</span><h3>Responsabilidad</h3><p>Trabajamos con compromiso, profesionalismo y dedicación.</p></article>
+        <article class="valor"><span class="num">04</span><h3>Innovación</h3><p>Incorporamos nuevas técnicas, estilos y tendencias en nuestros servicios.</p></article>
+        <article class="valor"><span class="num">05</span><h3>Respeto</h3><p>Valoramos la individualidad, los gustos y las necesidades de cada persona.</p></article>
+        <article class="valor"><span class="num">06</span><h3>Bienestar</h3><p>Promovemos el cuidado personal como una forma de mejorar la confianza y la calidad de vida.</p></article>
+        <article class="valor"><span class="num">07</span><h3>Autenticidad</h3><p>Fomentamos la expresión personal a través del estilo, el arte y la cultura urbana.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="seccion oscura">
+    <div class="u-container" style="display:grid;gap:var(--sp-8)">
+      <div class="encabezado">
+        <span class="u-kicker">Barbería · Spa · Cultura urbana</span>
+        <h2>¿Qué nos hace diferentes?</h2>
+        <hr class="u-rule">
+      </div>
+      <div class="prosa">
+        <p>En 911 S.A.S. Urban Salón, fusionamos la barbería, el spa y la cultura urbana en un mismo espacio. Nuestra inspiración en el graffiti aporta una identidad visual artística, dinámica y auténtica, convirtiendo nuestro salón en un lugar que va más allá de la belleza tradicional.</p>
+        <p>Nos diferenciamos por ofrecer un ambiente moderno, una atención personalizada y servicios que combinan estilo, comodidad y bienestar. Buscamos que cada cliente encuentre un espacio para renovar su imagen, relajarse y expresar su esencia sin perder su autenticidad.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="seccion">
+    <div class="u-container cierre">
+      <span class="u-tag">911 S.A.S. Urban Salón: donde el arte urbano, tu estilo y tu bienestar se encuentran.</span>
+      <a class="btn" href="../#turnos" style="margin:0;height:var(--control-h);padding:0 24px;font-size:var(--fs-sm)">Pedir turno</a>
+    </div>
+  </section>
+</main>
+
+<footer class="pie">
+  <div class="u-container marca">
+    <img src="../assets/logo-911-urban-salon-dark.png" alt="911 Urban Salón" style="height:110px;width:auto">
+    <span class="u-tag" style="transform:rotate(-2deg)">Tu belleza, nuestra emergencia</span>
+  </div>
+  <div class="u-container linea">
+    <span>911 Urban Salón · <span id="anio"></span></span>
+    <span style="text-transform:uppercase;letter-spacing:var(--ls-widest)">Ynt-labs</span>
+  </div>
+</footer>
+<script>document.getElementById("anio").textContent = new Date().getFullYear();</script>
+</body></html>

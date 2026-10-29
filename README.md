@@ -14,6 +14,8 @@ Landing pública y panel administrativo de turnos de la barbería **911 Urban Sa
 
 ```
 ├── index.html            ← página pública (ÚNICO original; editar aquí)
+├── nosotros/
+│   └── index.html        ← "¿Quiénes somos?" (sirve en /nosotros/): HTML estático, sin React
 ├── landing.html          ← solo redirige a / (por enlaces viejos)
 ├── admin/
 │   └── index.html        ← panel administrativo (sirve en /admin)
@@ -23,6 +25,7 @@ Landing pública y panel administrativo de turnos de la barbería **911 Urban Sa
 │   └── panel.jsx         ← toda la app del panel
 ├── ops/                  ← scripts de operación (compilar, respaldo, limpieza)
 ├── assets/               ← imágenes de marca que usa el sitio
+│   ├── base.css          ← tokens CSS + temas + capa responsive (lo comparten / y /nosotros/)
 │   ├── logo-911-urban-salon-dark.png / -light.png
 │   ├── logo-911-graffiti-tag.png
 │   ├── icon-barber-pole.png
@@ -50,7 +53,8 @@ Sitio **estático sin build step** (GitHub Pages) + **Supabase** como backend
 La landing es autocontenida y lleva, en orden:
 
 1. **Tokens CSS** del design system (colores, tipografía, espaciado, efectos) +
-   una capa responsive al final del `<style>`.
+   una capa responsive al final, en `assets/base.css` (desde 2026-10-29 es un
+   archivo aparte para que `/nosotros/` use exactamente el mismo estilo).
 2. **CDNs**: React 18 (producción), Lucide (iconos), AOS (solo la landing) y
    Google Fonts. **Ya no viaja Babel al navegador**: el JSX se compila una vez
    en desarrollo (~132 KB gzip de CDN en total; antes ~1 MB y 1–2 s de

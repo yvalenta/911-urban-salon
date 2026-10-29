@@ -813,7 +813,7 @@ function NavBar({ onCta }) {
       <div className="u-container" style={{ display: "flex", alignItems: "center", gap: "var(--sp-6)", minHeight: 64 }}>
         <a href="#top" aria-label="Inicio"><LogoMarcaBarra /></a>
         <nav style={{ display: "flex", gap: "var(--sp-5)", marginLeft: "auto" }}>
-          {[["#cortes", "Cortes"], ["#spa", "Spa"], ["#turnos", "Turnos"], ["#equipo", "Equipo"], ["#horarios", "Horarios"]].map(([href, t]) => (
+          {[["#cortes", "Cortes"], ["#spa", "Spa"], ["#turnos", "Turnos"], ["#equipo", "Equipo"], ["#horarios", "Horarios"], ["nosotros/", "Nosotros"]].map(([href, t]) => (
             <a key={href} href={href} style={{ font: "600 var(--fs-2xs)/1 var(--font-condensed)", textTransform: "uppercase",
               letterSpacing: "var(--ls-wider)", color: "var(--text-muted)" }}>{t}</a>
           ))}
